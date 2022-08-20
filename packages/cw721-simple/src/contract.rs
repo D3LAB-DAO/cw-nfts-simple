@@ -79,7 +79,7 @@ where
 pub fn query<T, Q>(deps: Deps, env: Env, msg: QueryMsg<Q>) -> StdResult<Binary>
 where
     T: Serialize + DeserializeOwned + Clone,
-    Q: CustomMsg,
+    Q: Serialize + DeserializeOwned + Clone,
 {
     match msg {
         QueryMsg::Minter {} => query::minter(deps),
