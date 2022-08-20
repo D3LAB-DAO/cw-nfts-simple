@@ -66,7 +66,7 @@ where
     }
 }
 
-pub fn tokens<'a, T>() -> IndexedMap<'a, &'a str, TokenInfo<T>, TokenIndexes<'a, T>>
+pub fn get_tokens<'a, T>() -> IndexedMap<'a, &'a str, TokenInfo<T>, TokenIndexes<'a, T>>
 where
     T: Serialize + DeserializeOwned + Clone,
 {
@@ -164,7 +164,7 @@ mod state_tests {
         };
 
         // Mint token if not claimed before else ContractError::Claimed
-        tokens()
+        get_tokens()
             .update(&mut deps.storage, token_1_id, |old| match old {
                 Some(_) => Err(ContractError::Claimed {}),
                 None => Ok(new_token.clone()),
@@ -174,7 +174,7 @@ mod state_tests {
         let token_count_after_increment_1 = increment_tokens(&mut deps.storage).unwrap_or_default();
         assert_eq!(token_count_after_increment_1, 1);
 
-        tokens()
+        get_tokens()
             .update(&mut deps.storage, token_2_id, |old| match old {
                 Some(_) => Err(ContractError::Claimed {}),
                 None => Ok(empty_custom_token),
@@ -182,18 +182,19 @@ mod state_tests {
             .unwrap();
 
         // Minting nft with same id will fail
-        let wrong_token_update = tokens().update(&mut deps.storage, token_1_id, |old| match old {
-            Some(_) => Err(ContractError::Claimed {}),
-            None => Ok(new_token.clone()),
-        });
+        let wrong_token_update =
+            get_tokens().update(&mut deps.storage, token_1_id, |old| match old {
+                Some(_) => Err(ContractError::Claimed {}),
+                None => Ok(new_token.clone()),
+            });
 
         assert!(wrong_token_update.is_err());
 
         let token_count_after_increment_2 = increment_tokens(&mut deps.storage).unwrap_or_default();
         assert_eq!(token_count_after_increment_2, 2);
 
-        let token_1: TokenInfo<CustomInfo> = tokens().load(&deps.storage, token_1_id).unwrap();
-        let token_2: TokenInfo<Empty> = tokens().load(&deps.storage, token_2_id).unwrap();
+        let token_1: TokenInfo<CustomInfo> = get_tokens().load(&deps.storage, token_1_id).unwrap();
+        let token_2: TokenInfo<Empty> = get_tokens().load(&deps.storage, token_2_id).unwrap();
 
         assert_eq!(token_1.owner, owner_addr);
         assert_eq!(token_1.extension.name, "test_nft");

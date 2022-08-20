@@ -14,9 +14,9 @@ pub fn mint<T, C>(
     info: MessageInfo,
     msg: MintMsg<T>,
 ) -> Result<Response<C>, ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
-        C: CustomMsg,
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
 {
     let minter = get_minter(deps.storage);
 
@@ -32,7 +32,7 @@ pub fn mint<T, C>(
         extension: msg.extension,
     };
 
-    tokens().update(deps.storage, &msg.token_id, |old| match old {
+    get_tokens().update(deps.storage, &msg.token_id, |old| match old {
         Some(_) => Err(ContractError::Claimed {}),
         None => Ok(token),
     })?;
@@ -54,9 +54,9 @@ pub fn approve<T, C>(
     token_id: String,
     expires: Option<Expiration>,
 ) -> Result<Response<C>, ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
-        C: CustomMsg,
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
 {
     _update_approvals::<T>(deps, &env, &info, &spender, &token_id, true, expires)?;
 
@@ -74,9 +74,9 @@ pub fn revoke<T, C>(
     spender: String,
     token_id: String,
 ) -> Result<Response<C>, ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
-        C: CustomMsg,
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
 {
     _update_approvals::<T>(deps, &env, &info, &spender, &token_id, false, None)?;
 
@@ -94,8 +94,8 @@ pub fn approve_all<C>(
     operator: String,
     expires: Option<Expiration>,
 ) -> Result<Response<C>, ContractError>
-    where
-        C: CustomMsg,
+where
+    C: CustomMsg,
 {
     // reject expired data as invalid
     let expires = expires.unwrap_or_default();
@@ -119,8 +119,8 @@ pub fn revoke_all<C>(
     info: MessageInfo,
     operator: String,
 ) -> Result<Response<C>, ContractError>
-    where
-        C: CustomMsg,
+where
+    C: CustomMsg,
 {
     let operator_addr = deps.api.addr_validate(&operator)?;
     OPERATORS.remove(deps.storage, (&info.sender, &operator_addr));
@@ -137,11 +137,11 @@ pub fn burn<T, C>(
     info: MessageInfo,
     token_id: String,
 ) -> Result<Response<C>, ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
-        C: CustomMsg,
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
 {
-    let token = tokens().load(deps.storage, &token_id)?;
+    let token = get_tokens().load(deps.storage, &token_id)?;
     check_can_send::<T>(deps.as_ref(), &env, &info, &token)?;
 
     tokens::<T>().remove(deps.storage, &token_id)?;
@@ -160,9 +160,9 @@ pub fn transfer_nft<T, C>(
     recipient: String,
     token_id: String,
 ) -> Result<Response<C>, ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
-        C: CustomMsg,
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
 {
     _transfer_nft::<T>(deps, &env, &info, &recipient, &token_id)?;
 
@@ -181,9 +181,9 @@ pub fn send_nft<T, C>(
     token_id: String,
     msg: Binary,
 ) -> Result<Response<C>, ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
-        C: CustomMsg,
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
 {
     // Transfer token
     _transfer_nft::<T>(deps, &env, &info, &contract, &token_id)?;
@@ -210,16 +210,16 @@ fn _transfer_nft<T>(
     recipient: &str,
     token_id: &str,
 ) -> Result<TokenInfo<T>, ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
+where
+    T: Serialize + DeserializeOwned + Clone,
 {
-    let mut token = tokens().load(deps.storage, token_id)?;
+    let mut token = get_tokens().load(deps.storage, token_id)?;
     // ensure we have permissions
     check_can_send(deps.as_ref(), env, info, &token)?;
     // set owner and remove existing approvals
     token.owner = deps.api.addr_validate(recipient)?;
     token.approvals = vec![];
-    tokens().save(deps.storage, token_id, &token)?;
+    get_tokens().save(deps.storage, token_id, &token)?;
     Ok(token)
 }
 
@@ -234,10 +234,10 @@ pub fn _update_approvals<T>(
     add: bool,
     expires: Option<Expiration>,
 ) -> Result<TokenInfo<T>, ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
+where
+    T: Serialize + DeserializeOwned + Clone,
 {
-    let mut token = tokens().load(deps.storage, token_id)?;
+    let mut token = get_tokens().load(deps.storage, token_id)?;
     // ensure we have permissions
     check_can_approve(deps.as_ref(), env, info, &token)?;
 
@@ -263,7 +263,7 @@ pub fn _update_approvals<T>(
         token.approvals.push(approval);
     }
 
-    tokens().save(deps.storage, token_id, &token)?;
+    get_tokens().save(deps.storage, token_id, &token)?;
 
     Ok(token)
 }
@@ -275,8 +275,8 @@ pub fn check_can_approve<T>(
     info: &MessageInfo,
     token: &TokenInfo<T>,
 ) -> Result<(), ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
+where
+    T: Serialize + DeserializeOwned + Clone,
 {
     // owner can approve
     if token.owner == info.sender {
@@ -303,8 +303,8 @@ pub fn check_can_send<T>(
     info: &MessageInfo,
     token: &TokenInfo<T>,
 ) -> Result<(), ContractError>
-    where
-        T: Serialize + DeserializeOwned + Clone,
+where
+    T: Serialize + DeserializeOwned + Clone,
 {
     // owner can send
     if token.owner == info.sender {
