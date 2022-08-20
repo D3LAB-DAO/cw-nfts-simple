@@ -52,6 +52,7 @@ pub fn execute(
         ExecuteMsg::ApproveAll { operator, expires } => {
             execute::approve_all(deps, env, info, operator, expires)
         }
+        ExecuteMsg::RevokeAll { operator } => execute::revoke_all(deps, env, info, operator),
         _ => Ok(Response::new()),
     }
 }
@@ -90,7 +91,7 @@ pub mod contract_tests {
                 minter: ADDR1.to_string(),
             },
         )
-        .unwrap();
+            .unwrap();
     }
 
     fn mint(deps: DepsMut) -> Result<Response, ContractError> {
@@ -131,7 +132,7 @@ pub mod contract_tests {
                 attr("action", "mint"),
                 attr("minter", ADDR1),
                 attr("owner", ADDR1),
-                attr("token_id", "1")
+                attr("token_id", "1"),
             ]
         )
     }
@@ -150,7 +151,7 @@ pub mod contract_tests {
                 attr("action", "approve"),
                 attr("sender", ADDR1),
                 attr("spender", ADDR2),
-                attr("token_id", "1")
+                attr("token_id", "1"),
             ]
         );
 
@@ -166,7 +167,7 @@ pub mod contract_tests {
             mock_info(ADDR1, &[]),
             expired_approve_msg,
         )
-        .unwrap_err();
+            .unwrap_err();
 
         assert_eq!(invalid_res, ContractError::Expired {});
     }
@@ -192,7 +193,7 @@ pub mod contract_tests {
                 attr("action", "revoke"),
                 attr("sender", ADDR1),
                 attr("spender", ADDR1),
-                attr("token_id", "1")
+                attr("token_id", "1"),
             ]
         );
     }
@@ -215,13 +216,13 @@ pub mod contract_tests {
             mock_info(ADDR1, &[]),
             approve_all_msg,
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             approve_all_res.attributes,
             [
                 attr("action", "approve_all"),
-                attr("sender", "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm"),
-                attr("operator", "osmo18zfp9u7zxg3gel4r3txa2jqxme7jkw7dmh6zw4")
+                attr("sender", ADDR1),
+                attr("operator", ADDR2),
             ]
         );
 
@@ -236,7 +237,37 @@ pub mod contract_tests {
             mock_info(ADDR1, &[]),
             expired_approve_all_msg,
         )
-        .unwrap_err();
+            .unwrap_err();
         assert_eq!(expired_approve_all_res, ContractError::Expired {});
+    }
+
+    #[test]
+    fn test_revoke_all() {
+        let mut deps = mock_dependencies();
+
+        init(deps.as_mut());
+        mint(deps.as_mut()).unwrap();
+        approve(deps.as_mut()).unwrap();
+
+        let revoke_all_msg = ExecuteMsg::RevokeAll {
+            operator: ADDR2.to_string(),
+        };
+
+        let revoke_all_res = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            revoke_all_msg,
+        )
+            .unwrap();
+
+        assert_eq!(
+            revoke_all_res.attributes,
+            [
+                attr("action", "revoke_all"),
+                attr("sender", ADDR1),
+                attr("operator", ADDR2),
+            ]
+        );
     }
 }

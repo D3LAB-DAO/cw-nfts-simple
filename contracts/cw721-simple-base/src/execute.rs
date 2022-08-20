@@ -111,6 +111,24 @@ where
         .add_attribute("operator", operator))
 }
 
+pub fn revoke_all<C>(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    operator: String,
+) -> Result<Response<C>, ContractError>
+where
+    C: CustomMsg,
+{
+    let operator_addr = deps.api.addr_validate(&operator)?;
+    OPERATORS.remove(deps.storage, (&info.sender, &operator_addr));
+
+    Ok(Response::new()
+        .add_attribute("action", "revoke_all")
+        .add_attribute("sender", info.sender)
+        .add_attribute("operator", operator))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn _update_approvals<T>(
     deps: DepsMut,
