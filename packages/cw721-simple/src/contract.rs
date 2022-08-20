@@ -43,7 +43,8 @@ pub fn execute<T, E, C>(
 ) -> Result<Response<C>, ContractError>
 where
     T: Serialize + DeserializeOwned + Clone,
-    E: CustomMsg,
+    // Custom message for extension E have to implement traits same as T
+    E: Serialize + DeserializeOwned + Clone,
     C: CustomMsg,
 {
     match msg {
