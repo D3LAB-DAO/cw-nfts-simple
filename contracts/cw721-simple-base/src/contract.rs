@@ -53,7 +53,19 @@ pub fn execute(
             execute::approve_all(deps, env, info, operator, expires)
         }
         ExecuteMsg::RevokeAll { operator } => execute::revoke_all(deps, env, info, operator),
-        _ => Ok(Response::new()),
+        ExecuteMsg::TransferNft {
+            recipient,
+            token_id,
+        } => execute::transfer_nft::<Extension, Empty>(deps, env, info, recipient, token_id),
+        ExecuteMsg::SendNft {
+            contract,
+            token_id,
+            msg,
+        } => execute::send_nft::<Extension, Empty>(deps, env, info, contract, token_id, msg),
+        ExecuteMsg::Burn { token_id } => {
+            execute::burn::<Extension, Empty>(deps, env, info, token_id)
+        }
+        ExecuteMsg::Extension { msg: _ } => Ok(Response::new()),
     }
 }
 
@@ -64,7 +76,7 @@ pub mod contract_tests {
     use crate::msg::{ExecuteMsg, InstantiateMsg, MintMsg};
     use crate::state::{tokens, TokenInfo};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{attr, DepsMut, Empty, Response};
+    use cosmwasm_std::{attr, to_binary, DepsMut, Empty, Response};
     use cw721::Expiration;
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
@@ -94,10 +106,10 @@ pub mod contract_tests {
             .unwrap();
     }
 
-    fn mint(deps: DepsMut) -> Result<Response, ContractError> {
+    fn mint(deps: DepsMut, owner: &str, token_id: &str) -> Result<Response, ContractError> {
         let execute_mint_msg = ExecuteMsg::Mint(MintMsg::<Extension> {
-            token_id: "1".to_string(),
-            owner: ADDR1.to_string(),
+            token_id: token_id.to_string(),
+            owner: owner.to_string(),
             token_uri: None,
             extension: None,
         });
@@ -105,14 +117,27 @@ pub mod contract_tests {
         execute(deps, mock_env(), mock_info(ADDR1, &[]), execute_mint_msg)
     }
 
-    fn approve(deps: DepsMut) -> Result<Response, ContractError> {
+    fn approve(deps: DepsMut, sender: &str, spender: &str) -> Result<Response, ContractError> {
         let valid_approve_msg = ExecuteMsg::Approve {
-            spender: ADDR2.to_string(),
+            spender: spender.to_string(),
             token_id: "1".to_string(),
             expires: Some(Expiration::AtHeight(50000)),
         };
 
-        execute(deps, mock_env(), mock_info(ADDR1, &[]), valid_approve_msg)
+        execute(deps, mock_env(), mock_info(sender, &[]), valid_approve_msg)
+    }
+
+    fn transfer_nft(
+        deps: DepsMut,
+        sender: &str,
+        recipient: &str,
+    ) -> Result<Response, ContractError> {
+        let transfer_nft_msg = ExecuteMsg::TransferNft {
+            recipient: recipient.to_string(),
+            token_id: "1".to_string(),
+        };
+
+        execute(deps, mock_env(), mock_info(sender, &[]), transfer_nft_msg)
     }
 
     #[test]
@@ -120,7 +145,7 @@ pub mod contract_tests {
         let mut deps = mock_dependencies();
 
         init(deps.as_mut());
-        let res = mint(deps.as_mut()).unwrap();
+        let res = mint(deps.as_mut(), ADDR1, "1").unwrap();
 
         let token_1: TokenInfo<Extension> = tokens().load(&deps.storage, "1").unwrap();
 
@@ -142,8 +167,8 @@ pub mod contract_tests {
         let mut deps = mock_dependencies();
 
         init(deps.as_mut());
-        mint(deps.as_mut()).unwrap();
-        let valid_res = approve(deps.as_mut()).unwrap();
+        mint(deps.as_mut(), ADDR1, "1").unwrap();
+        let valid_res = approve(deps.as_mut(), ADDR1, ADDR2).unwrap();
 
         assert_eq!(
             valid_res.attributes,
@@ -168,8 +193,11 @@ pub mod contract_tests {
             expired_approve_msg,
         )
             .unwrap_err();
-
         assert_eq!(invalid_res, ContractError::Expired {});
+
+        // Unauthorized approve
+        let unauthorized_res = approve(deps.as_mut(), ADDR2, ADDR2).unwrap_err();
+        assert_eq!(unauthorized_res, ContractError::Unauthorized {});
     }
 
     #[test]
@@ -177,8 +205,8 @@ pub mod contract_tests {
         let mut deps = mock_dependencies();
 
         init(deps.as_mut());
-        mint(deps.as_mut()).unwrap();
-        approve(deps.as_mut()).unwrap();
+        mint(deps.as_mut(), ADDR1, "1").unwrap();
+        approve(deps.as_mut(), ADDR1, ADDR2).unwrap();
 
         let revoke_msg = ExecuteMsg::Revoke {
             spender: ADDR1.to_string(),
@@ -203,7 +231,7 @@ pub mod contract_tests {
         let mut deps = mock_dependencies();
 
         init(deps.as_mut());
-        mint(deps.as_mut()).unwrap();
+        mint(deps.as_mut(), ADDR1, "1").unwrap();
 
         let approve_all_msg = ExecuteMsg::ApproveAll {
             operator: ADDR2.to_string(),
@@ -246,8 +274,8 @@ pub mod contract_tests {
         let mut deps = mock_dependencies();
 
         init(deps.as_mut());
-        mint(deps.as_mut()).unwrap();
-        approve(deps.as_mut()).unwrap();
+        mint(deps.as_mut(), ADDR1, "1").unwrap();
+        approve(deps.as_mut(), ADDR1, ADDR2).unwrap();
 
         let revoke_all_msg = ExecuteMsg::RevokeAll {
             operator: ADDR2.to_string(),
@@ -269,5 +297,83 @@ pub mod contract_tests {
                 attr("operator", ADDR2),
             ]
         );
+    }
+
+    #[test]
+    fn test_transfer_nft() {
+        let mut deps = mock_dependencies();
+
+        init(deps.as_mut());
+        mint(deps.as_mut(), ADDR1, "1").unwrap();
+        let transfer_nft_res = transfer_nft(deps.as_mut(), ADDR1, ADDR2).unwrap();
+
+        assert_eq!(
+            transfer_nft_res.attributes,
+            [
+                attr("action", "transfer_nft"),
+                attr("sender", ADDR1),
+                attr("recipient", ADDR2),
+                attr("token_id", "1"),
+            ]
+        );
+
+        // ADDR1 is unauthorized
+        let transfer_err = transfer_nft(deps.as_mut(), ADDR1, ADDR2).unwrap_err();
+        assert_eq!(transfer_err, ContractError::Unauthorized {})
+    }
+
+    #[test]
+    fn test_approve_and_transfer() {
+        let mut deps = mock_dependencies();
+
+        init(deps.as_mut());
+        mint(deps.as_mut(), ADDR1, "1").unwrap();
+        approve(deps.as_mut(), ADDR1, ADDR2).unwrap();
+        transfer_nft(deps.as_mut(), ADDR2, ADDR2).unwrap();
+    }
+
+    #[test]
+    fn test_send_nft() {
+        let mut deps = mock_dependencies();
+        let contract_addr = mock_env().contract.address;
+
+        init(deps.as_mut());
+        mint(deps.as_mut(), ADDR1, "1").unwrap();
+
+        approve(deps.as_mut(), ADDR1, contract_addr.as_ref()).unwrap();
+
+        let send_nft_msg = ExecuteMsg::<Extension, Empty>::SendNft {
+            contract: contract_addr.to_string(),
+            token_id: "1".to_string(),
+            msg: to_binary(&ExecuteMsg::TransferNft::<Extension, Empty> {
+                recipient: ADDR2.to_string(),
+                token_id: "1".to_string(),
+            })
+                .unwrap(),
+        };
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            send_nft_msg,
+        )
+            .unwrap();
+    }
+
+    #[test]
+    fn test_burn() {
+        let mut deps = mock_dependencies();
+
+        init(deps.as_mut());
+        mint(deps.as_mut(), ADDR1, "1").unwrap();
+        approve(deps.as_mut(), ADDR1, ADDR2).unwrap();
+        let burn_msg = ExecuteMsg::Burn {
+            token_id: "1".to_string(),
+        };
+
+        execute(deps.as_mut(), mock_env(), mock_info(ADDR1, &[]), burn_msg.clone()).unwrap();
+        // Cannot burn same nft again
+        execute(deps.as_mut(), mock_env(), mock_info(ADDR1, &[]), burn_msg).unwrap_err();
     }
 }

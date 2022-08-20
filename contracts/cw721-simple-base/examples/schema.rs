@@ -20,6 +20,6 @@ fn main() {
         "ExecuteMsg",
     );
     export_schema_with_title(&schema_for!(MintMsg<Extension>), &out_dir, "MintMsg");
-    export_schema(&schema_for!(QueryMsg<Extension>), &out_dir);
+    export_schema_with_title(&schema_for!(QueryMsg<Extension>), &out_dir, "QueryMsg");
     export_schema(&schema_for!(MinterResponse), &out_dir);
 }

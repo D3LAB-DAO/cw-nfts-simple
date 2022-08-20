@@ -1,8 +1,10 @@
 use crate::error::ContractError;
 use crate::msg::MintMsg;
-use crate::state::{get_minter, increment_tokens, tokens, Approval, TokenInfo, OPERATORS};
-use cosmwasm_std::{Deps, DepsMut, Env, MessageInfo, Response};
-use cw721::{CustomMsg, Expiration};
+use crate::state::{
+    decrement_tokens, get_minter, increment_tokens, tokens, Approval, TokenInfo, OPERATORS,
+};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
+use cw721::{CustomMsg, Cw721ReceiveMsg, Expiration};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -129,6 +131,98 @@ where
         .add_attribute("operator", operator))
 }
 
+pub fn burn<T, C>(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+) -> Result<Response<C>, ContractError>
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
+{
+    let token = tokens().load(deps.storage, &token_id)?;
+    check_can_send::<T>(deps.as_ref(), &env, &info, &token)?;
+
+    tokens::<T>().remove(deps.storage, &token_id)?;
+    decrement_tokens(deps.storage)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "burn")
+        .add_attribute("sender", info.sender)
+        .add_attribute("token_id", token_id))
+}
+
+pub fn transfer_nft<T, C>(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    recipient: String,
+    token_id: String,
+) -> Result<Response<C>, ContractError>
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
+{
+    _transfer_nft::<T>(deps, &env, &info, &recipient, &token_id)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "transfer_nft")
+        .add_attribute("sender", info.sender)
+        .add_attribute("recipient", recipient)
+        .add_attribute("token_id", token_id))
+}
+
+pub fn send_nft<T, C>(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    contract: String,
+    token_id: String,
+    msg: Binary,
+) -> Result<Response<C>, ContractError>
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
+{
+    // Transfer token
+    _transfer_nft::<T>(deps, &env, &info, &contract, &token_id)?;
+
+    let send = Cw721ReceiveMsg {
+        sender: info.sender.to_string(),
+        token_id: token_id.clone(),
+        msg,
+    };
+
+    // Send message
+    Ok(Response::new()
+        .add_message(send.into_cosmos_msg(contract.clone())?)
+        .add_attribute("action", "send_nft")
+        .add_attribute("sender", info.sender)
+        .add_attribute("recipient", contract)
+        .add_attribute("token_id", token_id))
+}
+
+fn _transfer_nft<T>(
+    deps: DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    recipient: &str,
+    token_id: &str,
+) -> Result<TokenInfo<T>, ContractError>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
+    let mut token = tokens().load(deps.storage, token_id)?;
+    // ensure we have permissions
+    check_can_send(deps.as_ref(), env, info, &token)?;
+    // set owner and remove existing approvals
+    token.owner = deps.api.addr_validate(recipient)?;
+    token.approvals = vec![];
+    tokens().save(deps.storage, token_id, &token)?;
+    Ok(token)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn _update_approvals<T>(
     deps: DepsMut,
@@ -189,6 +283,44 @@ where
         return Ok(());
     }
     // operator can approve
+    let op = OPERATORS.may_load(deps.storage, (&token.owner, &info.sender))?;
+    match op {
+        Some(ex) => {
+            if ex.is_expired(&env.block) {
+                Err(ContractError::Unauthorized {})
+            } else {
+                Ok(())
+            }
+        }
+        None => Err(ContractError::Unauthorized {}),
+    }
+}
+
+/// returns true iff the sender can transfer ownership of the token
+pub fn check_can_send<T>(
+    deps: Deps,
+    env: &Env,
+    info: &MessageInfo,
+    token: &TokenInfo<T>,
+) -> Result<(), ContractError>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
+    // owner can send
+    if token.owner == info.sender {
+        return Ok(());
+    }
+
+    // any non-expired token approval can send
+    if token
+        .approvals
+        .iter()
+        .any(|apr| apr.spender == info.sender && !apr.is_expired(&env.block))
+    {
+        return Ok(());
+    }
+
+    // operator can send
     let op = OPERATORS.may_load(deps.storage, (&token.owner, &info.sender))?;
     match op {
         Some(ex) => {
