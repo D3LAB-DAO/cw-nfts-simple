@@ -11,12 +11,13 @@ backtraces = ["cosmwasm-std/backtraces"]
 
 
 [dependencies]
-cosmwasm-std = "1.0.0"
-cw-utils = "0.14.0"
 schemars = "0.8.10"
 serde = { version = "1.0.140", default-features = false, features = ["derive"] }
+cosmwasm-std = "1.0.0"
+cw-storage-plus = "0.14.0"
+cw-utils = "0.14.0"
+cw721 = "0.13.4"
+thiserror = "1.0.32"
 
 [dev-dependencies]
-cw-storage-plus = "0.14.0"
 cosmwasm-schema = "1.0.0"
-cw721 = "0.13.4"
