@@ -157,6 +157,15 @@ mod tests {
             })
             .unwrap();
 
+        // Minting nft with same id will fail
+        let wrong_token_update = tokens()
+            .update(&mut deps.storage, token_1_id, |old| match old {
+                Some(_) => Err(ContractError::Claimed {}),
+                None => Ok(new_token.clone()),
+            });
+
+        assert!(wrong_token_update.is_err());
+
         let token_count_after_increment_2 = increment_tokens(&mut deps.storage).unwrap_or_default();
         assert_eq!(token_count_after_increment_2, 2);
 
