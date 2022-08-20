@@ -65,6 +65,26 @@ where
         .add_attribute("token_id", token_id))
 }
 
+pub fn revoke<T, C>(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    spender: String,
+    token_id: String,
+) -> Result<Response<C>, ContractError>
+where
+    T: Serialize + DeserializeOwned + Clone,
+    C: CustomMsg,
+{
+    _update_approvals::<T>(deps, &env, &info, &spender, &token_id, false, None)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "revoke")
+        .add_attribute("sender", info.sender)
+        .add_attribute("spender", spender)
+        .add_attribute("token_id", token_id))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn _update_approvals<T>(
     deps: DepsMut,

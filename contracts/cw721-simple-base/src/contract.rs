@@ -46,6 +46,9 @@ pub fn execute(
             token_id,
             expires,
         } => execute::approve::<Extension, Empty>(deps, env, info, spender, token_id, expires),
+        ExecuteMsg::Revoke { spender, token_id } => {
+            execute::revoke::<Extension, Empty>(deps, env, info, spender, token_id)
+        }
         _ => Ok(Response::new()),
     }
 }
@@ -57,7 +60,7 @@ pub mod contract_tests {
     use crate::msg::{ExecuteMsg, InstantiateMsg, MintMsg};
     use crate::state::{tokens, TokenInfo};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{attr, DepsMut, Empty};
+    use cosmwasm_std::{attr, DepsMut, Empty, Response};
     use cw721::Expiration;
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
@@ -84,10 +87,10 @@ pub mod contract_tests {
                 minter: ADDR1.to_string(),
             },
         )
-            .unwrap();
+        .unwrap();
     }
 
-    fn mint(deps: DepsMut) {
+    fn mint(deps: DepsMut) -> Result<Response, ContractError> {
         let execute_mint_msg = ExecuteMsg::Mint(MintMsg::<Extension> {
             token_id: "1".to_string(),
             owner: ADDR1.to_string(),
@@ -95,7 +98,17 @@ pub mod contract_tests {
             extension: None,
         });
 
-        execute(deps, mock_env(), mock_info(ADDR1, &[]), execute_mint_msg).unwrap();
+        execute(deps, mock_env(), mock_info(ADDR1, &[]), execute_mint_msg)
+    }
+
+    fn approve(deps: DepsMut) -> Result<Response, ContractError> {
+        let valid_approve_msg = ExecuteMsg::Approve {
+            spender: ADDR2.to_string(),
+            token_id: "1".to_string(),
+            expires: Some(Expiration::AtHeight(50000)),
+        };
+
+        execute(deps, mock_env(), mock_info(ADDR1, &[]), valid_approve_msg)
     }
 
     #[test]
@@ -103,12 +116,21 @@ pub mod contract_tests {
         let mut deps = mock_dependencies();
 
         init(deps.as_mut());
-        mint(deps.as_mut());
+        let res = mint(deps.as_mut()).unwrap();
 
         let token_1: TokenInfo<Extension> = tokens().load(&deps.storage, "1").unwrap();
 
         assert_eq!(token_1.owner, ADDR1);
         assert_eq!(token_1.extension, None);
+        assert_eq!(
+            res.attributes,
+            [
+                attr("action", "mint"),
+                attr("minter", ADDR1),
+                attr("owner", ADDR1),
+                attr("token_id", "1")
+            ]
+        )
     }
 
     #[test]
@@ -116,28 +138,15 @@ pub mod contract_tests {
         let mut deps = mock_dependencies();
 
         init(deps.as_mut());
-        mint(deps.as_mut());
-
-        let valid_approve_msg = ExecuteMsg::Approve {
-            spender: ADDR2.to_string(),
-            token_id: "1".to_string(),
-            expires: Some(Expiration::AtHeight(50000)),
-        };
-
-        let valid_res = execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info(ADDR1, &[]),
-            valid_approve_msg,
-        )
-            .unwrap();
+        mint(deps.as_mut()).unwrap();
+        let valid_res = approve(deps.as_mut()).unwrap();
 
         assert_eq!(
             valid_res.attributes,
             [
                 attr("action", "approve"),
-                attr("sender", "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm"),
-                attr("spender", "osmo18zfp9u7zxg3gel4r3txa2jqxme7jkw7dmh6zw4"),
+                attr("sender", ADDR1),
+                attr("spender", ADDR2),
                 attr("token_id", "1")
             ]
         );
@@ -154,8 +163,34 @@ pub mod contract_tests {
             mock_info(ADDR1, &[]),
             expired_approve_msg,
         )
-            .unwrap_err();
+        .unwrap_err();
 
         assert_eq!(invalid_res, ContractError::Expired {});
+    }
+
+    #[test]
+    fn test_revoke() {
+        let mut deps = mock_dependencies();
+
+        init(deps.as_mut());
+        mint(deps.as_mut()).unwrap();
+        approve(deps.as_mut()).unwrap();
+
+        let revoke_msg = ExecuteMsg::Revoke {
+            spender: ADDR1.to_string(),
+            token_id: "1".to_string(),
+        };
+
+        let revoke_res =
+            execute(deps.as_mut(), mock_env(), mock_info(ADDR1, &[]), revoke_msg).unwrap();
+        assert_eq!(
+            revoke_res.attributes,
+            [
+                attr("action", "revoke"),
+                attr("sender", ADDR1),
+                attr("spender", ADDR1),
+                attr("token_id", "1")
+            ]
+        );
     }
 }
