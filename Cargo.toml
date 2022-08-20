@@ -3,6 +3,7 @@ members = [
     "contracts/*",
     "packages/*"
 ]
+
 [profile.release]
 rpath = false
 lto = true

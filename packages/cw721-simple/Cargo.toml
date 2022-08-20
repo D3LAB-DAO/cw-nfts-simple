@@ -3,7 +3,6 @@ name = "cw721-simple"
 version = "0.1.0"
 edition = "2021"
 
-
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
 library = []
