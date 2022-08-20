@@ -1,5 +1,5 @@
 [package]
-name = "cw721-simple"
+name = "cw721-simple-base"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,7 +16,7 @@ library = []
 
 
 [dependencies]
-cw721-simple-base = { path = "../../packages/cw721-simple-base", features = ["library"] }
+cw721-simple = { path = "../../packages/cw721-simple", features = ["library"] }
 cosmwasm-std = { version = "1.0.0" }
 schemars = "0.8.10"
 serde = { version = "1.0.140", default-features = false, features = ["derive"] }

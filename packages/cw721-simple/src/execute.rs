@@ -224,7 +224,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn _update_approvals<T>(
+fn _update_approvals<T>(
     deps: DepsMut,
     env: &Env,
     info: &MessageInfo,

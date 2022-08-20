@@ -213,7 +213,10 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw721-simple-base",
+ "cw-storage-plus",
+ "cw-utils 0.14.0",
+ "cw2",
+ "cw721",
  "schemars",
  "serde",
  "thiserror",
@@ -225,10 +228,7 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus",
- "cw-utils 0.14.0",
- "cw2",
- "cw721",
+ "cw721-simple",
  "schemars",
  "serde",
  "thiserror",
