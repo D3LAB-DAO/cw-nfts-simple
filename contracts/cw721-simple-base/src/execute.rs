@@ -85,6 +85,32 @@ where
         .add_attribute("token_id", token_id))
 }
 
+pub fn approve_all<C>(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    operator: String,
+    expires: Option<Expiration>,
+) -> Result<Response<C>, ContractError>
+where
+    C: CustomMsg,
+{
+    // reject expired data as invalid
+    let expires = expires.unwrap_or_default();
+    if expires.is_expired(&env.block) {
+        return Err(ContractError::Expired {});
+    }
+
+    // set the operator for us
+    let operator_addr = deps.api.addr_validate(&operator)?;
+    OPERATORS.save(deps.storage, (&info.sender, &operator_addr), &expires)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "approve_all")
+        .add_attribute("sender", info.sender)
+        .add_attribute("operator", operator))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn _update_approvals<T>(
     deps: DepsMut,

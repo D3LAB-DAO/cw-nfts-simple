@@ -49,6 +49,9 @@ pub fn execute(
         ExecuteMsg::Revoke { spender, token_id } => {
             execute::revoke::<Extension, Empty>(deps, env, info, spender, token_id)
         }
+        ExecuteMsg::ApproveAll { operator, expires } => {
+            execute::approve_all(deps, env, info, operator, expires)
+        }
         _ => Ok(Response::new()),
     }
 }
@@ -192,5 +195,48 @@ pub mod contract_tests {
                 attr("token_id", "1")
             ]
         );
+    }
+
+    #[test]
+    fn test_approve_all() {
+        let mut deps = mock_dependencies();
+
+        init(deps.as_mut());
+        mint(deps.as_mut()).unwrap();
+
+        let approve_all_msg = ExecuteMsg::ApproveAll {
+            operator: ADDR2.to_string(),
+            expires: Some(Expiration::AtHeight(50000)),
+        };
+
+        let approve_all_res = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            approve_all_msg,
+        )
+        .unwrap();
+        assert_eq!(
+            approve_all_res.attributes,
+            [
+                attr("action", "approve_all"),
+                attr("sender", "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm"),
+                attr("operator", "osmo18zfp9u7zxg3gel4r3txa2jqxme7jkw7dmh6zw4")
+            ]
+        );
+
+        let expired_approve_all_msg = ExecuteMsg::ApproveAll {
+            operator: ADDR2.to_string(),
+            expires: Some(Expiration::AtHeight(10)),
+        };
+
+        let expired_approve_all_res = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            expired_approve_all_msg,
+        )
+        .unwrap_err();
+        assert_eq!(expired_approve_all_res, ContractError::Expired {});
     }
 }
