@@ -208,6 +208,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw721-simple"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw721-simple-base",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw721-simple-base"
 version = "0.1.0"
 dependencies = [

@@ -1,10 +1,13 @@
 use crate::error::ContractError;
 use crate::execute;
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{set_contract_info, set_minter};
-use cosmwasm_std::{entry_point, DepsMut, Empty, Env, MessageInfo, Response};
+use cosmwasm_std::{entry_point, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
-use cw721::ContractInfoResponse;
+use cw721::{ContractInfoResponse, CustomMsg};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+use std::fmt::Binary;
 
 const CONTRACT_NAME: &str = "crates.io:cw721-simple-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -33,41 +36,52 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
+pub fn execute<T, E, C>(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg<Extension, Empty>,
-) -> Result<Response, ContractError> {
+    msg: ExecuteMsg<T, E>,
+) -> Result<Response<C>, ContractError>
+    where
+        T: Serialize + DeserializeOwned + Clone,
+        E: CustomMsg,
+        C: CustomMsg,
+{
     match msg {
-        ExecuteMsg::Mint(msg) => execute::mint(deps, env, info, msg),
+        ExecuteMsg::Mint(msg) => execute::mint::<T, C>(deps, env, info, msg),
         ExecuteMsg::Approve {
             spender,
             token_id,
             expires,
-        } => execute::approve::<Extension, Empty>(deps, env, info, spender, token_id, expires),
+        } => execute::approve::<T, C>(deps, env, info, spender, token_id, expires),
         ExecuteMsg::Revoke { spender, token_id } => {
-            execute::revoke::<Extension, Empty>(deps, env, info, spender, token_id)
+            execute::revoke::<T, C>(deps, env, info, spender, token_id)
         }
         ExecuteMsg::ApproveAll { operator, expires } => {
-            execute::approve_all(deps, env, info, operator, expires)
+            execute::approve_all::<C>(deps, env, info, operator, expires)
         }
-        ExecuteMsg::RevokeAll { operator } => execute::revoke_all(deps, env, info, operator),
+        ExecuteMsg::RevokeAll { operator } => execute::revoke_all::<C>(deps, env, info, operator),
         ExecuteMsg::TransferNft {
             recipient,
             token_id,
-        } => execute::transfer_nft::<Extension, Empty>(deps, env, info, recipient, token_id),
+        } => execute::transfer_nft::<T, C>(deps, env, info, recipient, token_id),
         ExecuteMsg::SendNft {
             contract,
             token_id,
             msg,
-        } => execute::send_nft::<Extension, Empty>(deps, env, info, contract, token_id, msg),
-        ExecuteMsg::Burn { token_id } => {
-            execute::burn::<Extension, Empty>(deps, env, info, token_id)
-        }
+        } => execute::send_nft::<T, C>(deps, env, info, contract, token_id, msg),
+        ExecuteMsg::Burn { token_id } => execute::burn::<T, C>(deps, env, info, token_id),
         ExecuteMsg::Extension { msg: _ } => Ok(Response::new()),
     }
 }
+
+// #[cfg_attr(not(feature = "library"), entry_point)]
+// pub fn query(
+//     deps: Deps, env: Env, msg: QueryMsg<Empty>) -> StdResult<Binary> {
+//     match msg {
+//         QueryMsg::
+//     }
+// }
 
 #[cfg(test)]
 pub mod contract_tests {
@@ -107,14 +121,14 @@ pub mod contract_tests {
     }
 
     fn mint(deps: DepsMut, owner: &str, token_id: &str) -> Result<Response, ContractError> {
-        let execute_mint_msg = ExecuteMsg::Mint(MintMsg::<Extension> {
+        let execute_mint_msg = ExecuteMsg::<Extension, Empty>::Mint(MintMsg::<Extension> {
             token_id: token_id.to_string(),
             owner: owner.to_string(),
             token_uri: None,
             extension: None,
         });
 
-        execute(deps, mock_env(), mock_info(ADDR1, &[]), execute_mint_msg)
+        execute::<Extension, Empty, Empty>(deps, mock_env(), mock_info(ADDR1, &[]), execute_mint_msg)
     }
 
     fn approve(deps: DepsMut, sender: &str, spender: &str) -> Result<Response, ContractError> {
@@ -124,7 +138,7 @@ pub mod contract_tests {
             expires: Some(Expiration::AtHeight(50000)),
         };
 
-        execute(deps, mock_env(), mock_info(sender, &[]), valid_approve_msg)
+        execute::<Extension, Empty, Empty>(deps, mock_env(), mock_info(sender, &[]), valid_approve_msg)
     }
 
     fn transfer_nft(
@@ -132,12 +146,12 @@ pub mod contract_tests {
         sender: &str,
         recipient: &str,
     ) -> Result<Response, ContractError> {
-        let transfer_nft_msg = ExecuteMsg::TransferNft {
+        let transfer_nft_msg = ExecuteMsg::<Extension, Empty>::TransferNft {
             recipient: recipient.to_string(),
             token_id: "1".to_string(),
         };
 
-        execute(deps, mock_env(), mock_info(sender, &[]), transfer_nft_msg)
+        execute::<Extension, Empty, Empty>(deps, mock_env(), mock_info(sender, &[]), transfer_nft_msg)
     }
 
     #[test]
@@ -180,13 +194,13 @@ pub mod contract_tests {
             ]
         );
 
-        let expired_approve_msg = ExecuteMsg::Approve {
+        let expired_approve_msg = ExecuteMsg::<Extension, Empty>::Approve {
             spender: ADDR2.to_string(),
             token_id: "1".to_string(),
             expires: Some(Expiration::AtHeight(100)),
         };
 
-        let invalid_res = execute(
+        let invalid_res = execute::<Extension, Empty, Empty>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
@@ -208,13 +222,13 @@ pub mod contract_tests {
         mint(deps.as_mut(), ADDR1, "1").unwrap();
         approve(deps.as_mut(), ADDR1, ADDR2).unwrap();
 
-        let revoke_msg = ExecuteMsg::Revoke {
+        let revoke_msg = ExecuteMsg::<Extension, Empty>::Revoke {
             spender: ADDR1.to_string(),
             token_id: "1".to_string(),
         };
 
         let revoke_res =
-            execute(deps.as_mut(), mock_env(), mock_info(ADDR1, &[]), revoke_msg).unwrap();
+            execute::<Extension, Empty, Empty>(deps.as_mut(), mock_env(), mock_info(ADDR1, &[]), revoke_msg).unwrap();
         assert_eq!(
             revoke_res.attributes,
             [
@@ -233,12 +247,12 @@ pub mod contract_tests {
         init(deps.as_mut());
         mint(deps.as_mut(), ADDR1, "1").unwrap();
 
-        let approve_all_msg = ExecuteMsg::ApproveAll {
+        let approve_all_msg = ExecuteMsg::<Extension, Empty>::ApproveAll {
             operator: ADDR2.to_string(),
             expires: Some(Expiration::AtHeight(50000)),
         };
 
-        let approve_all_res = execute(
+        let approve_all_res = execute::<Extension, Empty, Empty>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
@@ -254,12 +268,12 @@ pub mod contract_tests {
             ]
         );
 
-        let expired_approve_all_msg = ExecuteMsg::ApproveAll {
+        let expired_approve_all_msg = ExecuteMsg::<Extension, Empty>::ApproveAll {
             operator: ADDR2.to_string(),
             expires: Some(Expiration::AtHeight(10)),
         };
 
-        let expired_approve_all_res = execute(
+        let expired_approve_all_res = execute::<Extension, Empty, Empty>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
@@ -277,11 +291,11 @@ pub mod contract_tests {
         mint(deps.as_mut(), ADDR1, "1").unwrap();
         approve(deps.as_mut(), ADDR1, ADDR2).unwrap();
 
-        let revoke_all_msg = ExecuteMsg::RevokeAll {
+        let revoke_all_msg = ExecuteMsg::<Extension, Empty>::RevokeAll {
             operator: ADDR2.to_string(),
         };
 
-        let revoke_all_res = execute(
+        let revoke_all_res = execute::<Extension, Empty, Empty>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
@@ -352,7 +366,7 @@ pub mod contract_tests {
                 .unwrap(),
         };
 
-        execute(
+        execute::<Extension, Empty, Empty>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
@@ -372,8 +386,14 @@ pub mod contract_tests {
             token_id: "1".to_string(),
         };
 
-        execute(deps.as_mut(), mock_env(), mock_info(ADDR1, &[]), burn_msg.clone()).unwrap();
+        execute::<Extension, Empty, Empty>(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            burn_msg.clone(),
+        )
+            .unwrap();
         // Cannot burn same nft again
-        execute(deps.as_mut(), mock_env(), mock_info(ADDR1, &[]), burn_msg).unwrap_err();
+        execute::<Extension, Empty, Empty>(deps.as_mut(), mock_env(), mock_info(ADDR1, &[]), burn_msg).unwrap_err();
     }
 }

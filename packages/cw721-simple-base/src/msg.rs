@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Binary;
+use cosmwasm_std::{Binary, Empty};
 use cw721::Expiration;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -22,7 +22,7 @@ pub struct InstantiateMsg {
 /// use other control logic in any contract that inherits this.
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum ExecuteMsg<T, E> {
+pub enum ExecuteMsg<T = Empty, E = Empty> {
     /// Transfer is a base message to move a token to another account without triggering actions
     TransferNft { recipient: String, token_id: String },
     /// Send is a base message to transfer a token to a contract and trigger an action
@@ -61,7 +61,7 @@ pub enum ExecuteMsg<T, E> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct MintMsg<T> {
+pub struct MintMsg<T = Empty> {
     /// Unique ID of the NFT
     pub token_id: String,
     /// The owner of the newly minter NFT
@@ -76,7 +76,7 @@ pub struct MintMsg<T> {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg<Q> {
+pub enum QueryMsg<Q = Empty> {
     /// Return the owner of the given token, error if token does not exist
     /// Return type: OwnerOfResponse
     OwnerOf {
