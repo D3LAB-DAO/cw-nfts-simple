@@ -129,7 +129,7 @@ where
             start_after,
             limit,
         } => query::tokens::<T>(deps, owner, start_after, limit),
-        QueryMsg::Extension { msg: _} => Ok(Binary::default()),
+        QueryMsg::Extension { msg: _ } => Ok(Binary::default()),
     }
 }
 
