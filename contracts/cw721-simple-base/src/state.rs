@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, BlockInfo};
+use cosmwasm_std::{Addr, BlockInfo, StdResult, Storage};
 use cw721::ContractInfoResponse;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use cw_utils::Expiration;
@@ -6,8 +6,17 @@ use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+const CONTRACT_KEY: &str = "nft_info";
+const MINTER_KEY: &str = "minter";
+const TOKEN_COUNT_KEY: &str = "num_tokens";
+const OPERATORS_KEY: &str = "operators";
 const TOKENS_KEY: &str = "tokens";
 const TOKENS_OWNER_KEY: &str = "tokens__owner";
+
+pub const TOKENS_COUNT: Item<u64> = Item::new(TOKEN_COUNT_KEY);
+pub const CONTRACT_INFO: Item<ContractInfoResponse> = Item::new(CONTRACT_KEY);
+pub const MINTER: Item<Addr> = Item::new(MINTER_KEY);
+pub const OPERATORS: Map<(&Addr, &Addr), Expiration> = Map::new(OPERATORS_KEY);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenInfo<T> {
@@ -21,7 +30,7 @@ pub struct TokenInfo<T> {
     /// Metadata JSON Schema
     pub token_uri: Option<String>,
 
-    /// You can add any custom metadata here when you extend cw721-base
+    /// You can add any custom metadata here when you extend cw721-simple-base
     pub extension: T,
 }
 
@@ -71,16 +80,29 @@ pub fn tokens<'a, T>() -> IndexedMap<'a, &'a str, TokenInfo<T>, TokenIndexes<'a,
     IndexedMap::new(TOKENS_KEY, indexes)
 }
 
-pub const CONTRACT_INFO: Item<ContractInfoResponse> = Item::new("contract_info");
-pub const MINTER: Item<Addr> = Item::new("minter");
-pub const OPERATORS: Map<(&Addr, &Addr), Expiration> = Map::new("operators");
+pub fn token_count(storage: &dyn Storage) -> StdResult<u64> {
+    Ok(TOKENS_COUNT.may_load(storage)?.unwrap_or_default())
+}
+
+pub fn increment_tokens(storage: &mut dyn Storage) -> StdResult<u64> {
+    let val = token_count(storage)? + 1;
+    TOKENS_COUNT.save(storage, &val)?;
+    Ok(val)
+}
+
+pub fn decrement_tokens(storage: &mut dyn Storage) -> StdResult<u64> {
+    let val = token_count(storage)? - 1;
+    TOKENS_COUNT.save(storage, &val)?;
+    Ok(val)
+}
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::Addr;
     use crate::error::ContractError;
-    use crate::state::TokenInfo;
+    use crate::state::token_count;
     use crate::state::tokens;
+    use crate::state::{decrement_tokens, increment_tokens, TokenInfo};
+    use cosmwasm_std::{Addr, Empty};
     use serde::{Deserialize, Serialize};
 
     #[test]
@@ -90,7 +112,9 @@ mod tests {
 
         let owner: &str = "ADDR1";
         let owner_addr = Addr::unchecked(owner);
-        let token_id: &str = "1";
+
+        let token_1_id: &str = "1";
+        let token_2_id: &str = "2";
 
         #[derive(Serialize, Deserialize, Clone)]
         struct CustomInfo {
@@ -108,16 +132,46 @@ mod tests {
             },
         };
 
+        let empty_custom_token = TokenInfo::<Empty> {
+            owner: owner_addr.clone(),
+            approvals: vec![],
+            token_uri: None,
+            extension: Empty {},
+        };
+
+        // Mint token if not claimed before else ContractError::Claimed
         tokens()
-            .update(&mut deps.storage, token_id, |old| match old {
+            .update(&mut deps.storage, token_1_id, |old| match old {
                 Some(_) => Err(ContractError::Claimed {}),
                 None => Ok(new_token.clone()),
             })
             .unwrap();
 
-        let token: TokenInfo<CustomInfo> = tokens().load(&deps.storage, token_id).unwrap();
+        let token_count_after_increment_1 = increment_tokens(&mut deps.storage).unwrap_or_default();
+        assert_eq!(token_count_after_increment_1, 1);
 
-        assert_eq!(token.owner, owner_addr);
-        assert_eq!(token.extension.name, "test_nft");
+        tokens()
+            .update(&mut deps.storage, token_2_id, |old| match old {
+                Some(_) => Err(ContractError::Claimed {}),
+                None => Ok(empty_custom_token),
+            })
+            .unwrap();
+
+        let token_count_after_increment_2 = increment_tokens(&mut deps.storage).unwrap_or_default();
+        assert_eq!(token_count_after_increment_2, 2);
+
+        let token_1: TokenInfo<CustomInfo> = tokens().load(&deps.storage, token_1_id).unwrap();
+        let token_2: TokenInfo<Empty> = tokens().load(&deps.storage, token_2_id).unwrap();
+
+        assert_eq!(token_1.owner, owner_addr);
+        assert_eq!(token_1.extension.name, "test_nft");
+        assert_eq!(token_2.owner, owner_addr);
+        assert_eq!(token_2.extension, Empty {});
+
+        let count = token_count(&deps.storage).unwrap_or_default();
+        assert_eq!(count, 2);
+
+        let token_count_after_decrement = decrement_tokens(&mut deps.storage).unwrap_or_default();
+        assert_eq!(token_count_after_decrement, 1);
     }
 }
