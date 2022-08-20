@@ -7,6 +7,7 @@
       <sourceFolder url="file://$MODULE_DIR$/packages/cw721-simple/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/cw721-simple/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/cw721-simple/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/contracts/cw721-simple-metadata/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/contracts/cw721-simple-base/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />

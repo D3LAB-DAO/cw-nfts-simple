@@ -146,19 +146,11 @@ pub mod contract_tests {
         Expiration, NftInfoResponse, NumTokensResponse, OperatorsResponse, OwnerOfResponse,
         TokensResponse,
     };
-    use schemars::JsonSchema;
-    use serde::{Deserialize, Serialize};
 
     const ADDR1: &str = "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm";
     const ADDR2: &str = "osmo18zfp9u7zxg3gel4r3txa2jqxme7jkw7dmh6zw4";
 
     type Extension = Option<Empty>;
-
-    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-    struct CustomInfo {
-        name: String,
-        url: String,
-    }
 
     fn init(deps: DepsMut) {
         instantiate(
