@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Binary, Empty};
 use cw721::Expiration;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     /// Name of the NFT contract
     pub name: String,
@@ -60,7 +60,7 @@ pub enum ExecuteMsg<T = Empty, E = Empty> {
     Extension { msg: E },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct MintMsg<T = Empty> {
     /// Unique ID of the NFT
     pub token_id: String,
@@ -74,7 +74,7 @@ pub struct MintMsg<T = Empty> {
     pub extension: T,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg<Q = Empty> {
     /// Return the owner of the given token, error if token does not exist
@@ -153,7 +153,7 @@ pub enum QueryMsg<Q = Empty> {
 }
 
 /// Shows who can mint these tokens
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Eq, Debug)]
 pub struct MinterResponse {
     pub minter: String,
 }

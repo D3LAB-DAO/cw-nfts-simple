@@ -122,8 +122,8 @@ pub fn get_minter(storage: &dyn Storage) -> Addr {
 #[cfg(test)]
 mod state_tests {
     use crate::error::ContractError;
+    use crate::state::get_tokens;
     use crate::state::token_count;
-    use crate::state::tokens;
     use crate::state::{decrement_tokens, increment_tokens, TokenInfo};
     use cosmwasm_std::{Addr, Empty};
     use schemars::JsonSchema;

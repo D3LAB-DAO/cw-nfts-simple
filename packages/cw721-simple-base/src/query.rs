@@ -9,6 +9,8 @@ use cw721::{
 };
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 const DEFAULT_LIMIT: u32 = 10;
 const MAX_LIMIT: u32 = 100;
@@ -29,21 +31,27 @@ pub fn num_tokens(deps: Deps) -> StdResult<Binary> {
     })
 }
 
-pub fn nft_info(deps: Deps, token_id: String) -> StdResult<Binary> {
-    let info = get_tokens().load(deps.storage, &token_id)?;
+pub fn nft_info<T>(deps: Deps, token_id: String) -> StdResult<Binary>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
+    let info: TokenInfo<T> = get_tokens().load(deps.storage, &token_id)?;
     to_binary(&NftInfoResponse {
         token_uri: info.token_uri,
         extension: info.extension,
     })
 }
 
-pub fn owner_of(
+pub fn owner_of<T>(
     deps: Deps,
     env: Env,
     token_id: String,
     include_expired: bool,
-) -> StdResult<Binary> {
-    let info = get_tokens().load(deps.storage, &token_id)?;
+) -> StdResult<Binary>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
+    let info: TokenInfo<T> = get_tokens().load(deps.storage, &token_id)?;
     to_binary(&OwnerOfResponse {
         owner: info.owner.to_string(),
         approvals: humanize_approvals(&env.block, &info, include_expired),
@@ -54,7 +62,10 @@ fn humanize_approvals<T>(
     block: &BlockInfo,
     info: &TokenInfo<T>,
     include_expired: bool,
-) -> Vec<cw721::Approval> {
+) -> Vec<cw721::Approval>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
     info.approvals
         .iter()
         .filter(|apr| include_expired || !apr.is_expired(block))
@@ -93,14 +104,17 @@ pub fn operators(
     to_binary(&OperatorsResponse { operators: res? })
 }
 
-pub fn approval(
+pub fn approval<T>(
     deps: Deps,
     env: Env,
     token_id: String,
     spender: String,
     include_expired: bool,
-) -> StdResult<Binary> {
-    let token = get_tokens().load(deps.storage, &token_id)?;
+) -> StdResult<Binary>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
+    let token: TokenInfo<T> = get_tokens().load(deps.storage, &token_id)?;
 
     // token owner has absolute approval
     if token.owner == spender {
@@ -108,7 +122,7 @@ pub fn approval(
             spender: token.owner.to_string(),
             expires: Expiration::Never {},
         };
-        return Ok(ApprovalResponse { approval });
+        return to_binary(&ApprovalResponse { approval });
     }
 
     let filtered: Vec<_> = token
@@ -132,13 +146,16 @@ pub fn approval(
 }
 
 /// approvals returns all approvals owner given access to
-pub fn approvals(
+pub fn approvals<T>(
     deps: Deps,
     env: Env,
     token_id: String,
     include_expired: bool,
-) -> StdResult<Binary> {
-    let token = get_tokens().load(deps.storage, &token_id)?;
+) -> StdResult<Binary>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
+    let token: TokenInfo<T> = get_tokens().load(deps.storage, &token_id)?;
     let approvals: Vec<_> = token
         .approvals
         .into_iter()
@@ -152,17 +169,20 @@ pub fn approvals(
     to_binary(&ApprovalsResponse { approvals })
 }
 
-pub fn tokens(
+pub fn tokens<T>(
     deps: Deps,
     owner: String,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<Binary> {
+) -> StdResult<Binary>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
 
     let owner_addr = deps.api.addr_validate(&owner)?;
-    let tokens: Vec<String> = get_tokens()
+    let tokens: Vec<String> = get_tokens::<T>()
         .idx
         .owner
         .prefix(owner_addr)
@@ -173,15 +193,18 @@ pub fn tokens(
     to_binary(&TokensResponse { tokens })
 }
 
-pub fn all_tokens(
+pub fn all_tokens<T>(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<Binary> {
+) -> StdResult<Binary>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
 
-    let tokens: StdResult<Vec<String>> = get_tokens()
+    let tokens: StdResult<Vec<String>> = get_tokens::<T>()
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| item.map(|(k, _)| k))
@@ -190,13 +213,16 @@ pub fn all_tokens(
     to_binary(&TokensResponse { tokens: tokens? })
 }
 
-pub fn all_nft_info(
+pub fn all_nft_info<T>(
     deps: Deps,
     env: Env,
     token_id: String,
     include_expired: bool,
-) -> StdResult<Binary> {
-    let info = get_tokens().load(deps.storage, &token_id)?;
+) -> StdResult<Binary>
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
+    let info: TokenInfo<T> = get_tokens().load(deps.storage, &token_id)?;
     to_binary(&AllNftInfoResponse {
         access: OwnerOfResponse {
             owner: info.owner.to_string(),

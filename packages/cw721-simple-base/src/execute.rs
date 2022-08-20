@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::MintMsg;
 use crate::state::{
-    decrement_tokens, get_minter, increment_tokens, tokens, Approval, TokenInfo, OPERATORS,
+    decrement_tokens, get_minter, get_tokens, increment_tokens, Approval, TokenInfo, OPERATORS,
 };
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 use cw721::{CustomMsg, Cw721ReceiveMsg, Expiration};
@@ -144,7 +144,7 @@ where
     let token = get_tokens().load(deps.storage, &token_id)?;
     check_can_send::<T>(deps.as_ref(), &env, &info, &token)?;
 
-    tokens::<T>().remove(deps.storage, &token_id)?;
+    get_tokens::<T>().remove(deps.storage, &token_id)?;
     decrement_tokens(deps.storage)?;
 
     Ok(Response::new()
