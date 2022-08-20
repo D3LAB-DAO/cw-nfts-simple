@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::msg::MintMsg;
-use crate::state::{get_minter, increment_tokens, TokenInfo, tokens};
+use crate::state::{get_minter, increment_tokens, tokens, TokenInfo};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
-use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 pub fn mint<T>(
     deps: DepsMut,
@@ -11,7 +11,9 @@ pub fn mint<T>(
     info: MessageInfo,
     msg: MintMsg<T>,
 ) -> Result<Response, ContractError>
-    where T: Serialize + DeserializeOwned + Clone {
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
     let minter = get_minter(deps.storage);
 
     if info.sender != minter {
@@ -26,11 +28,10 @@ pub fn mint<T>(
         extension: msg.extension,
     };
 
-    tokens()
-        .update(deps.storage, &msg.token_id, |old| match old {
-            Some(_) => Err(ContractError::Claimed {}),
-            None => Ok(token),
-        })?;
+    tokens().update(deps.storage, &msg.token_id, |old| match old {
+        Some(_) => Err(ContractError::Claimed {}),
+        None => Ok(token),
+    })?;
 
     increment_tokens(deps.storage)?;
 

@@ -1,14 +1,14 @@
-use std::fmt::Debug;
-use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, Response};
-use schemars::JsonSchema;
 use crate::error::ContractError;
 use crate::execute::mint;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::{set_contract_info, set_minter};
+use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 use cw721::ContractInfoResponse;
+use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::fmt::Debug;
 
 const CONTRACT_NAME: &str = "crates.io:cw721-simple-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -41,7 +41,9 @@ pub fn execute<T>(
     info: MessageInfo,
     msg: ExecuteMsg<T>,
 ) -> Result<Response, ContractError>
-    where T: Serialize + DeserializeOwned + Clone {
+where
+    T: Serialize + DeserializeOwned + Clone,
+{
     match msg {
         ExecuteMsg::Mint(msg) => mint(deps, env, info, msg),
         _ => Ok(Response::new()),
@@ -50,13 +52,13 @@ pub fn execute<T>(
 
 #[cfg(test)]
 pub mod contract_tests {
-    use schemars::JsonSchema;
-    use serde::{Deserialize, Serialize};
+    use crate::contract::{execute, instantiate};
+    use crate::msg::{ExecuteMsg, InstantiateMsg, MintMsg};
+    use crate::state::{tokens, TokenInfo};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{DepsMut, Env, MessageInfo};
-    use crate::contract::{instantiate, execute};
-    use crate::msg::{ExecuteMsg, InstantiateMsg, MintMsg};
-    use crate::state::{TokenInfo, tokens};
+    use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
 
     const ADDR1: &str = "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm";
 
@@ -65,7 +67,6 @@ pub mod contract_tests {
         name: String,
         url: String,
     }
-
 
     fn init(deps: DepsMut, env: Env, info: MessageInfo) {
         instantiate(
@@ -77,7 +78,8 @@ pub mod contract_tests {
                 symbol: "cw721".to_string(),
                 minter: ADDR1.to_string(),
             },
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     fn mint(deps: DepsMut, env: Env, info: MessageInfo) {

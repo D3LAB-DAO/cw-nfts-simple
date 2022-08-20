@@ -50,26 +50,26 @@ impl Approval {
 }
 
 pub struct TokenIndexes<'a, T>
-    where
-        T: Serialize + DeserializeOwned + Clone,
+where
+    T: Serialize + DeserializeOwned + Clone,
 {
     // An owner can have multiple tokens, which has string type TokenPK
     pub owner: MultiIndex<'a, Addr, TokenInfo<T>, String>,
 }
 
 impl<'a, T> IndexList<TokenInfo<T>> for TokenIndexes<'a, T>
-    where
-        T: Serialize + DeserializeOwned + Clone,
+where
+    T: Serialize + DeserializeOwned + Clone,
 {
-    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item=&'_ dyn Index<TokenInfo<T>>> + '_> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<TokenInfo<T>>> + '_> {
         let v: Vec<&dyn Index<TokenInfo<T>>> = vec![&self.owner];
         Box::new(v.into_iter())
     }
 }
 
 pub fn tokens<'a, T>() -> IndexedMap<'a, &'a str, TokenInfo<T>, TokenIndexes<'a, T>>
-    where
-        T: Serialize + DeserializeOwned + Clone,
+where
+    T: Serialize + DeserializeOwned + Clone,
 {
     let indexes = TokenIndexes {
         owner: MultiIndex::new(
@@ -117,9 +117,7 @@ pub fn set_minter(storage: &mut dyn Storage, minter: Addr) -> Result<Response, C
 }
 
 pub fn get_minter(storage: &mut dyn Storage) -> Addr {
-    MINTER.load(storage).unwrap_or_else(|_| {
-        Addr::unchecked("")
-    })
+    MINTER.load(storage).unwrap_or_else(|_| Addr::unchecked(""))
 }
 
 #[cfg(test)]
@@ -129,8 +127,8 @@ mod state_tests {
     use crate::state::tokens;
     use crate::state::{decrement_tokens, increment_tokens, TokenInfo};
     use cosmwasm_std::{Addr, Empty};
-    use serde::{Deserialize, Serialize};
     use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
 
     #[test]
     pub fn state_test() {
