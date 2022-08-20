@@ -115,7 +115,7 @@ pub fn set_minter(storage: &mut dyn Storage, minter: Addr) -> Result<Response, C
     }
 }
 
-pub fn get_minter(storage: &mut dyn Storage) -> Addr {
+pub fn get_minter(storage: &dyn Storage) -> Addr {
     MINTER.load(storage).unwrap_or_else(|_| Addr::unchecked(""))
 }
 

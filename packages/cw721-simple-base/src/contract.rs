@@ -1,13 +1,12 @@
 use crate::error::ContractError;
-use crate::execute;
+use crate::{execute, query};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{set_contract_info, set_minter};
-use cosmwasm_std::{entry_point, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{entry_point, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, to_binary, Binary};
 use cw2::set_contract_version;
 use cw721::{ContractInfoResponse, CustomMsg};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::fmt::Binary;
 
 const CONTRACT_NAME: &str = "crates.io:cw721-simple-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -75,13 +74,14 @@ pub fn execute<T, E, C>(
     }
 }
 
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn query(
-//     deps: Deps, env: Env, msg: QueryMsg<Empty>) -> StdResult<Binary> {
-//     match msg {
-//         QueryMsg::
-//     }
-// }
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(
+    deps: Deps, env: Env, msg: QueryMsg<Empty>) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Minter {} => query::minter(deps),
+        _ => to_binary("")
+    }
+}
 
 #[cfg(test)]
 pub mod contract_tests {
