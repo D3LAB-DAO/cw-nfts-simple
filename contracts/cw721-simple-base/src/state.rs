@@ -1,8 +1,7 @@
 use crate::error::ContractError;
 use cosmwasm_std::{Addr, BlockInfo, Response, StdResult, Storage};
-use cw721::ContractInfoResponse;
+use cw721::{ContractInfoResponse, Expiration};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
-use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -14,10 +13,10 @@ const OPERATORS_KEY: &str = "operators";
 const TOKENS_KEY: &str = "tokens";
 const TOKENS_OWNER_KEY: &str = "tokens__owner";
 
-const CONTRACT_INFO: Item<ContractInfoResponse> = Item::new(CONTRACT_KEY);
-const MINTER: Item<Addr> = Item::new(MINTER_KEY);
-const TOKENS_COUNT: Item<u64> = Item::new(TOKEN_COUNT_KEY);
-const OPERATORS: Map<(&Addr, &Addr), Expiration> = Map::new(OPERATORS_KEY);
+pub const CONTRACT_INFO: Item<ContractInfoResponse> = Item::new(CONTRACT_KEY);
+pub const MINTER: Item<Addr> = Item::new(MINTER_KEY);
+pub const TOKENS_COUNT: Item<u64> = Item::new(TOKEN_COUNT_KEY);
+pub const OPERATORS: Map<(&Addr, &Addr), Expiration> = Map::new(OPERATORS_KEY);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenInfo<T> {

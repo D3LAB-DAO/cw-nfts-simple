@@ -1,17 +1,15 @@
 use crate::error::ContractError;
-use crate::execute::mint;
+use crate::execute;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::{set_contract_info, set_minter};
-use cosmwasm_std::{entry_point, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{entry_point, DepsMut, Empty, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 use cw721::ContractInfoResponse;
-use schemars::JsonSchema;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-use std::fmt::Debug;
 
 const CONTRACT_NAME: &str = "crates.io:cw721-simple-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+type Extension = Option<Empty>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -35,17 +33,19 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute<T>(
+pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg<T>,
-) -> Result<Response, ContractError>
-where
-    T: Serialize + DeserializeOwned + Clone,
-{
+    msg: ExecuteMsg<Extension, Empty>,
+) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Mint(msg) => mint(deps, env, info, msg),
+        ExecuteMsg::Mint(msg) => execute::mint(deps, env, info, msg),
+        ExecuteMsg::Approve {
+            spender,
+            token_id,
+            expires,
+        } => execute::approve::<Extension, Empty>(deps, env, info, spender, token_id, expires),
         _ => Ok(Response::new()),
     }
 }
@@ -53,14 +53,19 @@ where
 #[cfg(test)]
 pub mod contract_tests {
     use crate::contract::{execute, instantiate};
+    use crate::error::ContractError;
     use crate::msg::{ExecuteMsg, InstantiateMsg, MintMsg};
     use crate::state::{tokens, TokenInfo};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{DepsMut, Env, MessageInfo};
+    use cosmwasm_std::{attr, DepsMut, Empty};
+    use cw721::Expiration;
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
 
     const ADDR1: &str = "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm";
+    const ADDR2: &str = "osmo18zfp9u7zxg3gel4r3txa2jqxme7jkw7dmh6zw4";
+
+    type Extension = Option<Empty>;
 
     #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
     struct CustomInfo {
@@ -68,46 +73,89 @@ pub mod contract_tests {
         url: String,
     }
 
-    fn init(deps: DepsMut, env: Env, info: MessageInfo) {
+    fn init(deps: DepsMut) {
         instantiate(
             deps,
-            env,
-            info,
+            mock_env(),
+            mock_info(ADDR1, &[]),
             InstantiateMsg {
                 name: "cw721".to_string(),
                 symbol: "cw721".to_string(),
                 minter: ADDR1.to_string(),
             },
         )
-        .unwrap();
+            .unwrap();
     }
 
-    fn mint(deps: DepsMut, env: Env, info: MessageInfo) {
-        let execute_mint_msg = ExecuteMsg::Mint(MintMsg {
+    fn mint(deps: DepsMut) {
+        let execute_mint_msg = ExecuteMsg::Mint(MintMsg::<Extension> {
             token_id: "1".to_string(),
             owner: ADDR1.to_string(),
             token_uri: None,
-            extension: CustomInfo {
-                name: "token_1".to_string(),
-                url: "https://token1.test".to_string(),
-            },
+            extension: None,
         });
 
-        execute(deps, env, info, execute_mint_msg).unwrap();
+        execute(deps, mock_env(), mock_info(ADDR1, &[]), execute_mint_msg).unwrap();
     }
 
     #[test]
     fn test_execute_mint() {
         let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info(ADDR1, &[]);
 
-        init(deps.as_mut(), env.clone(), info.clone());
-        mint(deps.as_mut(), env, info);
+        init(deps.as_mut());
+        mint(deps.as_mut());
 
-        let token_1: TokenInfo<CustomInfo> = tokens().load(&deps.storage, "1").unwrap();
+        let token_1: TokenInfo<Extension> = tokens().load(&deps.storage, "1").unwrap();
 
-        assert_eq!(token_1.extension.name, "token_1");
-        assert_eq!(token_1.extension.url, "https://token1.test");
+        assert_eq!(token_1.owner, ADDR1);
+        assert_eq!(token_1.extension, None);
+    }
+
+    #[test]
+    fn test_approve() {
+        let mut deps = mock_dependencies();
+
+        init(deps.as_mut());
+        mint(deps.as_mut());
+
+        let valid_approve_msg = ExecuteMsg::Approve {
+            spender: ADDR2.to_string(),
+            token_id: "1".to_string(),
+            expires: Some(Expiration::AtHeight(50000)),
+        };
+
+        let valid_res = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            valid_approve_msg,
+        )
+            .unwrap();
+
+        assert_eq!(
+            valid_res.attributes,
+            [
+                attr("action", "approve"),
+                attr("sender", "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm"),
+                attr("spender", "osmo18zfp9u7zxg3gel4r3txa2jqxme7jkw7dmh6zw4"),
+                attr("token_id", "1")
+            ]
+        );
+
+        let expired_approve_msg = ExecuteMsg::Approve {
+            spender: ADDR2.to_string(),
+            token_id: "1".to_string(),
+            expires: Some(Expiration::AtHeight(100)),
+        };
+
+        let invalid_res = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            expired_approve_msg,
+        )
+            .unwrap_err();
+
+        assert_eq!(invalid_res, ContractError::Expired {});
     }
 }
