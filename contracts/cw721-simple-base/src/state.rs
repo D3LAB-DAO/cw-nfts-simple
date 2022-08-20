@@ -1,4 +1,5 @@
-use cosmwasm_std::{Addr, BlockInfo, StdResult, Storage};
+use crate::error::ContractError;
+use cosmwasm_std::{Addr, BlockInfo, Response, StdResult, Storage};
 use cw721::ContractInfoResponse;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use cw_utils::Expiration;
@@ -13,10 +14,10 @@ const OPERATORS_KEY: &str = "operators";
 const TOKENS_KEY: &str = "tokens";
 const TOKENS_OWNER_KEY: &str = "tokens__owner";
 
-pub const TOKENS_COUNT: Item<u64> = Item::new(TOKEN_COUNT_KEY);
-pub const CONTRACT_INFO: Item<ContractInfoResponse> = Item::new(CONTRACT_KEY);
-pub const MINTER: Item<Addr> = Item::new(MINTER_KEY);
-pub const OPERATORS: Map<(&Addr, &Addr), Expiration> = Map::new(OPERATORS_KEY);
+const CONTRACT_INFO: Item<ContractInfoResponse> = Item::new(CONTRACT_KEY);
+const MINTER: Item<Addr> = Item::new(MINTER_KEY);
+const TOKENS_COUNT: Item<u64> = Item::new(TOKEN_COUNT_KEY);
+const OPERATORS: Map<(&Addr, &Addr), Expiration> = Map::new(OPERATORS_KEY);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenInfo<T> {
@@ -96,17 +97,43 @@ pub fn decrement_tokens(storage: &mut dyn Storage) -> StdResult<u64> {
     Ok(val)
 }
 
+pub fn set_contract_info(
+    storage: &mut dyn Storage,
+    info: ContractInfoResponse,
+) -> Result<Response, ContractError> {
+    let res = CONTRACT_INFO.save(storage, &info);
+    match res {
+        Ok(_) => Ok(Response::new()),
+        Err(_) => Err(ContractError::ContractInfoSaveError {}),
+    }
+}
+
+pub fn set_minter(storage: &mut dyn Storage, minter: Addr) -> Result<Response, ContractError> {
+    let res = MINTER.save(storage, &minter);
+    match res {
+        Ok(_) => Ok(Response::new()),
+        Err(_) => Err(ContractError::MinterSaveError {}),
+    }
+}
+
+pub fn get_minter(storage: &mut dyn Storage) -> Addr {
+    MINTER.load(storage).unwrap_or_else(|_| {
+        Addr::unchecked("")
+    })
+}
+
 #[cfg(test)]
-mod tests {
+mod state_tests {
     use crate::error::ContractError;
     use crate::state::token_count;
     use crate::state::tokens;
     use crate::state::{decrement_tokens, increment_tokens, TokenInfo};
     use cosmwasm_std::{Addr, Empty};
     use serde::{Deserialize, Serialize};
+    use schemars::JsonSchema;
 
     #[test]
-    pub fn test_multi_index() {
+    pub fn state_test() {
         use cosmwasm_std::testing::mock_dependencies;
         let mut deps = mock_dependencies();
 
@@ -116,7 +143,7 @@ mod tests {
         let token_1_id: &str = "1";
         let token_2_id: &str = "2";
 
-        #[derive(Serialize, Deserialize, Clone)]
+        #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
         struct CustomInfo {
             name: String,
             url: String,
@@ -158,11 +185,10 @@ mod tests {
             .unwrap();
 
         // Minting nft with same id will fail
-        let wrong_token_update = tokens()
-            .update(&mut deps.storage, token_1_id, |old| match old {
-                Some(_) => Err(ContractError::Claimed {}),
-                None => Ok(new_token.clone()),
-            });
+        let wrong_token_update = tokens().update(&mut deps.storage, token_1_id, |old| match old {
+            Some(_) => Err(ContractError::Claimed {}),
+            None => Ok(new_token.clone()),
+        });
 
         assert!(wrong_token_update.is_err());
 

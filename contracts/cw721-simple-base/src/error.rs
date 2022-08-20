@@ -17,4 +17,10 @@ pub enum ContractError {
 
     #[error("Approval not found for: {spender}")]
     ApprovalNotFound { spender: String },
+
+    #[error("Saving contract info failed")]
+    ContractInfoSaveError {},
+
+    #[error("Saving minter failed")]
+    MinterSaveError {},
 }
