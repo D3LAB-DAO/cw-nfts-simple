@@ -249,7 +249,7 @@ pub mod test_contract {
             })
         );
 
-        let hello_query_msg = QueryMsg::<CustomQuery>::Extension {
+        let hello_query_msg = QueryMsg::Extension {
             msg: CustomQuery::HelloQuery {},
         };
         let hello_query_res: HelloResponse =
