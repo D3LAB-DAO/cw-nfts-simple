@@ -1,15 +1,11 @@
 # Cw721-simple
 
----
-
 Cw721 spec-based package to write contract in cw20 style, totally same logic with cw721-base. <br>
 Supports flexible contract extension such as metadata extension, custom contract wrapper. <br>
 Not stand-alone compilable because it's designed only for extension.
 
 
 ## Implementation
-
----
 
 If you don't need any metadata extension or custom error, just forward entry points to functions under cw721-simple::contract. <br>
 With metadata extension and custom error, pass your custom types to execute, query functions. <br>
