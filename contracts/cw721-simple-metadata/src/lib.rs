@@ -62,7 +62,7 @@ pub fn instantiate(
 fn handle_custom_msg(msg: MetaMsgExtension) -> Result<Response, ContractError<CustomError>> {
     match msg {
         MetaMessage::ValidHello {} => Ok(Response::new().add_attribute("custom_msg", "hello")),
-        MetaMessage::InvalidHello {} => Err(ContractError::CustomErr(CustomError::HelloError {})),
+        MetaMessage::InvalidHello {} => Err(ContractError::CustomError(CustomError::HelloError {})),
     }
 }
 
@@ -216,7 +216,7 @@ pub mod test_contract {
 
         assert_eq!(
             invalid_hello_err,
-            ContractError::CustomErr(CustomError::HelloError {})
+            ContractError::CustomError(CustomError::HelloError {})
         );
     }
 }

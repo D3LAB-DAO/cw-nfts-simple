@@ -30,7 +30,7 @@ where
     MinterSaveError {},
 
     #[error("CustomError")]
-    CustomErr(E),
+    CustomError(E),
 }
 
 #[derive(Error, Debug, PartialEq)]
