@@ -62,7 +62,7 @@ pub fn instantiate(
 fn handle_custom_msg(msg: MetaMsgExtension) -> Result<Response, ContractError<CustomError>> {
     match msg {
         MetaMessage::ValidHello {} => Ok(Response::new().add_attribute("custom_msg", "hello")),
-        MetaMessage::InvalidHello {} => Err(ContractError::CustomErr(CustomError::HelloError {}))
+        MetaMessage::InvalidHello {} => Err(ContractError::CustomErr(CustomError::HelloError {})),
     }
 }
 
@@ -86,7 +86,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 #[cfg(test)]
 pub mod test_contract {
-    use crate::{CustomError, execute};
+    use crate::{execute, CustomError};
     use crate::{instantiate, query, Extension, MetaMsgExtension, Metadata, Trait};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, from_binary, DepsMut, Response};
@@ -107,10 +107,14 @@ pub mod test_contract {
                 minter: ADDR1.to_string(),
             },
         )
-            .unwrap();
+        .unwrap();
     }
 
-    fn mint(deps: DepsMut, owner: &str, token_id: &str) -> Result<Response, ContractError<CustomError>> {
+    fn mint(
+        deps: DepsMut,
+        owner: &str,
+        token_id: &str,
+    ) -> Result<Response, ContractError<CustomError>> {
         let execute_mint_msg =
             ExecuteMsg::<Extension, MetaMsgExtension>::Mint(MintMsg::<Extension> {
                 token_id: token_id.to_string(),
@@ -189,15 +193,15 @@ pub mod test_contract {
         let valid_hello_msg = ExecuteMsg::Extension {
             msg: MetaMsgExtension::ValidHello {},
         };
-        let valid_hello_res= execute(
+        let valid_hello_res = execute(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
             valid_hello_msg,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(valid_hello_res.attributes, [attr("custom_msg", "hello")]);
-
 
         let invalid_hello_msg = ExecuteMsg::Extension {
             msg: MetaMsgExtension::InvalidHello {},
@@ -207,8 +211,12 @@ pub mod test_contract {
             mock_env(),
             mock_info(ADDR1, &[]),
             invalid_hello_msg,
-        ).unwrap_err();
+        )
+        .unwrap_err();
 
-        assert_eq!(invalid_hello_err, ContractError::CustomErr(CustomError::HelloError {}));
+        assert_eq!(
+            invalid_hello_err,
+            ContractError::CustomErr(CustomError::HelloError {})
+        );
     }
 }

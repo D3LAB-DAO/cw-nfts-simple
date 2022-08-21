@@ -1,5 +1,3 @@
-use std::error::Error;
-use std::fmt::Debug;
 use crate::error::ContractError;
 use crate::msg::MintMsg;
 use crate::state::{
@@ -9,6 +7,8 @@ use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 use cw721::{CustomMsg, Cw721ReceiveMsg, Expiration};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::error::Error;
+use std::fmt::Debug;
 
 pub fn mint<T, C, E>(
     deps: DepsMut,

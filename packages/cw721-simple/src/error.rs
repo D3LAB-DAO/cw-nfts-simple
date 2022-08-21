@@ -1,11 +1,13 @@
+use cosmwasm_std::StdError;
 use std::error::Error;
 use std::fmt::Debug;
-use cosmwasm_std::StdError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError<E = CustomError>
-    where E: Error + Debug + PartialEq {
+where
+    E: Error + Debug + PartialEq,
+{
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -34,5 +36,5 @@ pub enum ContractError<E = CustomError>
 #[derive(Error, Debug, PartialEq)]
 pub enum CustomError {
     #[error("CustomError")]
-    CustomError {}
+    CustomError {},
 }
