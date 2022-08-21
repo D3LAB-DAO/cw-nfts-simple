@@ -45,7 +45,7 @@ pub fn execute<T, M, C, E>(
 ) -> Result<Response<C>, ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
-    // Custom message for extension E have to implement traits same as T
+    // Custom message for extension M have to implement traits same as T
     M: Serialize + DeserializeOwned + Clone,
     E: Debug + PartialEq + Error,
     C: CustomMsg,
