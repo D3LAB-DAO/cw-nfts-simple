@@ -217,6 +217,11 @@ pub mod test_contract {
                 }),
             }
         );
+    }
+
+    #[test]
+    fn test_customs() {
+        let mut deps = mock_dependencies();
 
         let valid_hello_msg = ExecuteMsg::Extension {
             msg: CustomExtensionMsg::ValidHello {},
