@@ -12,7 +12,7 @@ use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum MetaMessage {
+pub enum CustomExtensionMsg {
     ValidHello {},
     InvalidHello {},
 }
@@ -47,7 +47,6 @@ pub struct Metadata {
 }
 
 pub type Extension = Option<Metadata>;
-pub type MetaMsgExtension = MetaMessage;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -59,10 +58,16 @@ pub fn instantiate(
     cw721_instantiate(deps, env, info, msg)
 }
 
-fn handle_custom_msg(msg: MetaMsgExtension) -> Result<Response, ContractError<CustomError>> {
+fn handle_custom_msg(msg: CustomExtensionMsg) -> Result<Response, ContractError<CustomError>> {
     match msg {
-        MetaMessage::ValidHello {} => Ok(Response::new().add_attribute("custom_msg", "hello")),
-        MetaMessage::InvalidHello {} => Err(ContractError::CustomError(CustomError::HelloError { msg: "no hello".to_string() })),
+        CustomExtensionMsg::ValidHello {} => {
+            Ok(Response::new().add_attribute("custom_msg", "hello"))
+        }
+        CustomExtensionMsg::InvalidHello {} => {
+            Err(ContractError::CustomError(CustomError::HelloError {
+                msg: "no hello".to_string(),
+            }))
+        }
     }
 }
 
@@ -71,7 +76,7 @@ pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg<Extension, MetaMsgExtension>,
+    msg: ExecuteMsg<Extension, CustomExtensionMsg>,
 ) -> Result<Response, ContractError<CustomError>> {
     match msg {
         ExecuteMsg::Extension { msg } => handle_custom_msg(msg),
@@ -86,8 +91,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 #[cfg(test)]
 pub mod test_contract {
-    use crate::{execute, CustomError};
-    use crate::{instantiate, query, Extension, MetaMsgExtension, Metadata, Trait};
+    use crate::{
+        execute, instantiate, query, CustomError, CustomExtensionMsg, Extension, Metadata, Trait,
+    };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, from_binary, DepsMut, Response};
     use cw721::{NftInfoResponse, OwnerOfResponse};
@@ -107,7 +113,7 @@ pub mod test_contract {
                 minter: ADDR1.to_string(),
             },
         )
-            .unwrap();
+        .unwrap();
     }
 
     fn mint(
@@ -116,7 +122,7 @@ pub mod test_contract {
         token_id: &str,
     ) -> Result<Response, ContractError<CustomError>> {
         let execute_mint_msg =
-            ExecuteMsg::<Extension, MetaMsgExtension>::Mint(MintMsg::<Extension> {
+            ExecuteMsg::<Extension, CustomExtensionMsg>::Mint(MintMsg::<Extension> {
                 token_id: token_id.to_string(),
                 owner: owner.to_string(),
                 token_uri: None,
@@ -191,7 +197,7 @@ pub mod test_contract {
         );
 
         let valid_hello_msg = ExecuteMsg::Extension {
-            msg: MetaMsgExtension::ValidHello {},
+            msg: CustomExtensionMsg::ValidHello {},
         };
         let valid_hello_res = execute(
             deps.as_mut(),
@@ -199,12 +205,12 @@ pub mod test_contract {
             mock_info(ADDR1, &[]),
             valid_hello_msg,
         )
-            .unwrap();
+        .unwrap();
 
         assert_eq!(valid_hello_res.attributes, [attr("custom_msg", "hello")]);
 
         let invalid_hello_msg = ExecuteMsg::Extension {
-            msg: MetaMsgExtension::InvalidHello {},
+            msg: CustomExtensionMsg::InvalidHello {},
         };
         let invalid_hello_err = execute(
             deps.as_mut(),
@@ -212,11 +218,13 @@ pub mod test_contract {
             mock_info(ADDR1, &[]),
             invalid_hello_msg,
         )
-            .unwrap_err();
+        .unwrap_err();
 
         assert_eq!(
             invalid_hello_err,
-            ContractError::CustomError(CustomError::HelloError {msg: "no hello".to_string()})
+            ContractError::CustomError(CustomError::HelloError {
+                msg: "no hello".to_string()
+            })
         );
     }
 }
