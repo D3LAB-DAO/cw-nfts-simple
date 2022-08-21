@@ -121,7 +121,7 @@ pub fn get_minter(storage: &dyn Storage) -> Addr {
 
 #[cfg(test)]
 mod state_tests {
-    use crate::error::ContractError;
+    use crate::error::{ContractError, CustomError};
     use crate::state::get_tokens;
     use crate::state::token_count;
     use crate::state::{decrement_tokens, increment_tokens, TokenInfo};
@@ -166,7 +166,7 @@ mod state_tests {
         // Mint token if not claimed before else ContractError::Claimed
         get_tokens()
             .update(&mut deps.storage, token_1_id, |old| match old {
-                Some(_) => Err(ContractError::Claimed {}),
+                Some(_) => Err(ContractError::<CustomError>::Claimed {}),
                 None => Ok(new_token.clone()),
             })
             .unwrap();
@@ -176,7 +176,7 @@ mod state_tests {
 
         get_tokens()
             .update(&mut deps.storage, token_2_id, |old| match old {
-                Some(_) => Err(ContractError::Claimed {}),
+                Some(_) => Err(ContractError::<CustomError>::Claimed {}),
                 None => Ok(empty_custom_token),
             })
             .unwrap();
@@ -184,7 +184,7 @@ mod state_tests {
         // Minting nft with same id will fail
         let wrong_token_update =
             get_tokens().update(&mut deps.storage, token_1_id, |old| match old {
-                Some(_) => Err(ContractError::Claimed {}),
+                Some(_) => Err(ContractError::<CustomError>::Claimed {}),
                 None => Ok(new_token.clone()),
             });
 

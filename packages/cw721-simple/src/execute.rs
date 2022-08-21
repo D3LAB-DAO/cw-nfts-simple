@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt::Debug;
 use crate::error::ContractError;
 use crate::msg::MintMsg;
 use crate::state::{
@@ -8,14 +10,15 @@ use cw721::{CustomMsg, Cw721ReceiveMsg, Expiration};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-pub fn mint<T, C>(
+pub fn mint<T, C, E>(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     msg: MintMsg<T>,
-) -> Result<Response<C>, ContractError>
+) -> Result<Response<C>, ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
     C: CustomMsg,
 {
     let minter = get_minter(deps.storage);
@@ -46,19 +49,20 @@ where
         .add_attribute("token_id", msg.token_id))
 }
 
-pub fn approve<T, C>(
+pub fn approve<T, C, E>(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     spender: String,
     token_id: String,
     expires: Option<Expiration>,
-) -> Result<Response<C>, ContractError>
+) -> Result<Response<C>, ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
     C: CustomMsg,
 {
-    _update_approvals::<T>(deps, &env, &info, &spender, &token_id, true, expires)?;
+    _update_approvals::<T, E>(deps, &env, &info, &spender, &token_id, true, expires)?;
 
     Ok(Response::new()
         .add_attribute("action", "approve")
@@ -67,18 +71,19 @@ where
         .add_attribute("token_id", token_id))
 }
 
-pub fn revoke<T, C>(
+pub fn revoke<T, C, E>(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     spender: String,
     token_id: String,
-) -> Result<Response<C>, ContractError>
+) -> Result<Response<C>, ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
     C: CustomMsg,
 {
-    _update_approvals::<T>(deps, &env, &info, &spender, &token_id, false, None)?;
+    _update_approvals::<T, E>(deps, &env, &info, &spender, &token_id, false, None)?;
 
     Ok(Response::new()
         .add_attribute("action", "revoke")
@@ -87,14 +92,15 @@ where
         .add_attribute("token_id", token_id))
 }
 
-pub fn approve_all<C>(
+pub fn approve_all<C, E>(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     operator: String,
     expires: Option<Expiration>,
-) -> Result<Response<C>, ContractError>
+) -> Result<Response<C>, ContractError<E>>
 where
+    E: Debug + PartialEq + Error,
     C: CustomMsg,
 {
     // reject expired data as invalid
@@ -113,13 +119,14 @@ where
         .add_attribute("operator", operator))
 }
 
-pub fn revoke_all<C>(
+pub fn revoke_all<C, E>(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     operator: String,
-) -> Result<Response<C>, ContractError>
+) -> Result<Response<C>, ContractError<E>>
 where
+    E: Debug + PartialEq + Error,
     C: CustomMsg,
 {
     let operator_addr = deps.api.addr_validate(&operator)?;
@@ -131,18 +138,19 @@ where
         .add_attribute("operator", operator))
 }
 
-pub fn burn<T, C>(
+pub fn burn<T, C, E>(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     token_id: String,
-) -> Result<Response<C>, ContractError>
+) -> Result<Response<C>, ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
     C: CustomMsg,
 {
     let token = get_tokens().load(deps.storage, &token_id)?;
-    check_can_send::<T>(deps.as_ref(), &env, &info, &token)?;
+    check_can_send::<T, E>(deps.as_ref(), &env, &info, &token)?;
 
     get_tokens::<T>().remove(deps.storage, &token_id)?;
     decrement_tokens(deps.storage)?;
@@ -153,18 +161,19 @@ where
         .add_attribute("token_id", token_id))
 }
 
-pub fn transfer_nft<T, C>(
+pub fn transfer_nft<T, C, E>(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     recipient: String,
     token_id: String,
-) -> Result<Response<C>, ContractError>
+) -> Result<Response<C>, ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
     C: CustomMsg,
 {
-    _transfer_nft::<T>(deps, &env, &info, &recipient, &token_id)?;
+    _transfer_nft::<T, E>(deps, &env, &info, &recipient, &token_id)?;
 
     Ok(Response::new()
         .add_attribute("action", "transfer_nft")
@@ -173,20 +182,21 @@ where
         .add_attribute("token_id", token_id))
 }
 
-pub fn send_nft<T, C>(
+pub fn send_nft<T, C, E>(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     contract: String,
     token_id: String,
     msg: Binary,
-) -> Result<Response<C>, ContractError>
+) -> Result<Response<C>, ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
     C: CustomMsg,
 {
     // Transfer token
-    _transfer_nft::<T>(deps, &env, &info, &contract, &token_id)?;
+    _transfer_nft::<T, E>(deps, &env, &info, &contract, &token_id)?;
 
     let send = Cw721ReceiveMsg {
         sender: info.sender.to_string(),
@@ -203,15 +213,16 @@ where
         .add_attribute("token_id", token_id))
 }
 
-fn _transfer_nft<T>(
+fn _transfer_nft<T, E>(
     deps: DepsMut,
     env: &Env,
     info: &MessageInfo,
     recipient: &str,
     token_id: &str,
-) -> Result<TokenInfo<T>, ContractError>
+) -> Result<TokenInfo<T>, ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
 {
     let mut token = get_tokens().load(deps.storage, token_id)?;
     // ensure we have permissions
@@ -224,7 +235,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn _update_approvals<T>(
+fn _update_approvals<T, E>(
     deps: DepsMut,
     env: &Env,
     info: &MessageInfo,
@@ -233,9 +244,10 @@ fn _update_approvals<T>(
     // if add == false, remove. if add == true, remove then set with this expiration
     add: bool,
     expires: Option<Expiration>,
-) -> Result<TokenInfo<T>, ContractError>
+) -> Result<TokenInfo<T>, ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
 {
     let mut token = get_tokens().load(deps.storage, token_id)?;
     // ensure we have permissions
@@ -269,14 +281,15 @@ where
 }
 
 /// returns true iff the sender can execute approve or reject on the contract
-pub fn check_can_approve<T>(
+pub fn check_can_approve<T, E>(
     deps: Deps,
     env: &Env,
     info: &MessageInfo,
     token: &TokenInfo<T>,
-) -> Result<(), ContractError>
+) -> Result<(), ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
 {
     // owner can approve
     if token.owner == info.sender {
@@ -297,14 +310,15 @@ where
 }
 
 /// returns true iff the sender can transfer ownership of the token
-pub fn check_can_send<T>(
+pub fn check_can_send<T, E>(
     deps: Deps,
     env: &Env,
     info: &MessageInfo,
     token: &TokenInfo<T>,
-) -> Result<(), ContractError>
+) -> Result<(), ContractError<E>>
 where
     T: Serialize + DeserializeOwned + Clone,
+    E: Debug + PartialEq + Error,
 {
     // owner can send
     if token.owner == info.sender {

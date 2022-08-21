@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt::{Debug};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{set_contract_info, set_minter};
@@ -12,6 +14,7 @@ use serde::Serialize;
 
 const CONTRACT_NAME: &str = "crates.io:cw721-simple-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -35,51 +38,52 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute<T, E, C>(
+pub fn execute<T, M, C, E>(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg<T, E>,
-) -> Result<Response<C>, ContractError>
-where
-    T: Serialize + DeserializeOwned + Clone,
+    msg: ExecuteMsg<T, M>,
+) -> Result<Response<C>, ContractError<E>>
+    where
+        T: Serialize + DeserializeOwned + Clone,
     // Custom message for extension E have to implement traits same as T
-    E: Serialize + DeserializeOwned + Clone,
-    C: CustomMsg,
+        M: Serialize + DeserializeOwned + Clone,
+        E: Debug + PartialEq + Error,
+        C: CustomMsg,
 {
     match msg {
-        ExecuteMsg::Mint(msg) => execute::mint::<T, C>(deps, env, info, msg),
+        ExecuteMsg::Mint(msg) => execute::mint::<T, C, E>(deps, env, info, msg),
         ExecuteMsg::Approve {
             spender,
             token_id,
             expires,
-        } => execute::approve::<T, C>(deps, env, info, spender, token_id, expires),
+        } => execute::approve::<T, C, E>(deps, env, info, spender, token_id, expires),
         ExecuteMsg::Revoke { spender, token_id } => {
-            execute::revoke::<T, C>(deps, env, info, spender, token_id)
+            execute::revoke::<T, C, E>(deps, env, info, spender, token_id)
         }
         ExecuteMsg::ApproveAll { operator, expires } => {
-            execute::approve_all::<C>(deps, env, info, operator, expires)
+            execute::approve_all::<C, E>(deps, env, info, operator, expires)
         }
-        ExecuteMsg::RevokeAll { operator } => execute::revoke_all::<C>(deps, env, info, operator),
+        ExecuteMsg::RevokeAll { operator } => execute::revoke_all::<C, E>(deps, env, info, operator),
         ExecuteMsg::TransferNft {
             recipient,
             token_id,
-        } => execute::transfer_nft::<T, C>(deps, env, info, recipient, token_id),
+        } => execute::transfer_nft::<T, C, E>(deps, env, info, recipient, token_id),
         ExecuteMsg::SendNft {
             contract,
             token_id,
             msg,
-        } => execute::send_nft::<T, C>(deps, env, info, contract, token_id, msg),
-        ExecuteMsg::Burn { token_id } => execute::burn::<T, C>(deps, env, info, token_id),
+        } => execute::send_nft::<T, C, E>(deps, env, info, contract, token_id, msg),
+        ExecuteMsg::Burn { token_id } => execute::burn::<T, C, E>(deps, env, info, token_id),
         ExecuteMsg::Extension { msg: _ } => Ok(Response::new()),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query<T, Q>(deps: Deps, env: Env, msg: QueryMsg<Q>) -> StdResult<Binary>
-where
-    T: Serialize + DeserializeOwned + Clone,
-    Q: Serialize + DeserializeOwned + Clone,
+    where
+        T: Serialize + DeserializeOwned + Clone,
+        Q: Serialize + DeserializeOwned + Clone,
 {
     match msg {
         QueryMsg::Minter {} => query::minter(deps),
@@ -137,7 +141,7 @@ where
 #[cfg(test)]
 pub mod contract_tests {
     use crate::contract::{execute, instantiate, query};
-    use crate::error::ContractError;
+    use crate::error::{ContractError, CustomError};
     use crate::msg::{ExecuteMsg, InstantiateMsg, MintMsg, MinterResponse, QueryMsg};
     use crate::state::{get_tokens, TokenInfo};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -164,7 +168,7 @@ pub mod contract_tests {
                 minter: ADDR1.to_string(),
             },
         )
-        .unwrap();
+            .unwrap();
     }
 
     fn mint(deps: DepsMut, owner: &str, token_id: &str) -> Result<Response, ContractError> {
@@ -175,7 +179,7 @@ pub mod contract_tests {
             extension: None,
         });
 
-        execute::<Extension, Empty, Empty>(
+        execute::<Extension, Empty, Empty, CustomError>(
             deps,
             mock_env(),
             mock_info(ADDR1, &[]),
@@ -190,7 +194,7 @@ pub mod contract_tests {
             expires: Some(Expiration::AtHeight(50000)),
         };
 
-        execute::<Extension, Empty, Empty>(
+        execute::<Extension, Empty, Empty, CustomError>(
             deps,
             mock_env(),
             mock_info(sender, &[]),
@@ -208,7 +212,7 @@ pub mod contract_tests {
             token_id: "1".to_string(),
         };
 
-        execute::<Extension, Empty, Empty>(
+        execute::<Extension, Empty, Empty, CustomError>(
             deps,
             mock_env(),
             mock_info(sender, &[]),
@@ -242,7 +246,7 @@ pub mod contract_tests {
         let num_tokens_query_res: NumTokensResponse = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), num_tokens_query_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(num_tokens_query_res, NumTokensResponse { count: 2 });
     }
 
@@ -273,7 +277,7 @@ pub mod contract_tests {
         let query_approval_res: ApprovalResponse = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), query_approval_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             query_approval_res,
             ApprovalResponse {
@@ -292,7 +296,7 @@ pub mod contract_tests {
         let approvals_res: ApprovalsResponse = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), query_approvals_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             approvals_res,
             ApprovalsResponse {
@@ -309,13 +313,13 @@ pub mod contract_tests {
             expires: Some(Expiration::AtHeight(100)),
         };
 
-        let invalid_res = execute::<Extension, Empty, Empty>(
+        let invalid_res = execute::<Extension, Empty, Empty, CustomError>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
             expired_approve_msg,
         )
-        .unwrap_err();
+            .unwrap_err();
         assert_eq!(invalid_res, ContractError::Expired {});
 
         // Unauthorized approve
@@ -336,13 +340,13 @@ pub mod contract_tests {
             token_id: "1".to_string(),
         };
 
-        let revoke_res = execute::<Extension, Empty, Empty>(
+        let revoke_res = execute::<Extension, Empty, Empty, CustomError>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
             revoke_msg,
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             revoke_res.attributes,
             [
@@ -366,13 +370,13 @@ pub mod contract_tests {
             expires: Some(Expiration::AtHeight(50000)),
         };
 
-        let approve_all_res = execute::<Extension, Empty, Empty>(
+        let approve_all_res = execute::<Extension, Empty, Empty, CustomError>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
             approve_all_msg,
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             approve_all_res.attributes,
             [
@@ -392,7 +396,7 @@ pub mod contract_tests {
         let owner_of_res: OperatorsResponse = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), all_operators_query_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             owner_of_res,
             OperatorsResponse {
@@ -408,13 +412,13 @@ pub mod contract_tests {
             expires: Some(Expiration::AtHeight(10)),
         };
 
-        let expired_approve_all_res = execute::<Extension, Empty, Empty>(
+        let expired_approve_all_res = execute::<Extension, Empty, Empty, CustomError>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
             expired_approve_all_msg,
         )
-        .unwrap_err();
+            .unwrap_err();
 
         assert_eq!(expired_approve_all_res, ContractError::Expired {});
     }
@@ -431,13 +435,13 @@ pub mod contract_tests {
             operator: ADDR2.to_string(),
         };
 
-        let revoke_all_res = execute::<Extension, Empty, Empty>(
+        let revoke_all_res = execute::<Extension, Empty, Empty, CustomError>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
             revoke_all_msg,
         )
-        .unwrap();
+            .unwrap();
 
         assert_eq!(
             revoke_all_res.attributes,
@@ -475,7 +479,7 @@ pub mod contract_tests {
         let owner_of_res: OwnerOfResponse = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), owner_of_query_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             owner_of_res,
             OwnerOfResponse {
@@ -499,7 +503,7 @@ pub mod contract_tests {
         let tokens_query_res: TokensResponse = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), tokens_query_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
 
         assert_eq!(
             tokens_query_res,
@@ -526,7 +530,7 @@ pub mod contract_tests {
         let all_tokens_query_res: TokensResponse = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), all_tokens_query_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             all_tokens_query_res,
             TokensResponse {
@@ -552,16 +556,16 @@ pub mod contract_tests {
                 recipient: ADDR2.to_string(),
                 token_id: "1".to_string(),
             })
-            .unwrap(),
+                .unwrap(),
         };
 
-        execute::<Extension, Empty, Empty>(
+        execute::<Extension, Empty, Empty, CustomError>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
             send_nft_msg,
         )
-        .unwrap();
+            .unwrap();
     }
 
     #[test]
@@ -575,21 +579,21 @@ pub mod contract_tests {
             token_id: "1".to_string(),
         };
 
-        execute::<Extension, Empty, Empty>(
+        execute::<Extension, Empty, Empty, CustomError>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
             burn_msg.clone(),
         )
-        .unwrap();
+            .unwrap();
         // Cannot burn same nft again
-        execute::<Extension, Empty, Empty>(
+        execute::<Extension, Empty, Empty, CustomError>(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
             burn_msg,
         )
-        .unwrap_err();
+            .unwrap_err();
     }
 
     #[test]
@@ -603,7 +607,7 @@ pub mod contract_tests {
         let contract_info_query_res: ContractInfoResponse = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), contract_info_query_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             contract_info_query_res,
             ContractInfoResponse {
@@ -619,7 +623,7 @@ pub mod contract_tests {
         let nft_info_query_res: NftInfoResponse<Extension> = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), nft_info_query_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             nft_info_query_res,
             NftInfoResponse {
@@ -638,7 +642,7 @@ pub mod contract_tests {
         let all_nft_info_query_res: AllNftInfoResponse<Extension> = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), all_nft_info_query_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
 
         assert_eq!(
             all_nft_info_query_res,
@@ -668,7 +672,7 @@ pub mod contract_tests {
         let minter_query_res: MinterResponse = from_binary(
             &query::<Extension, Empty>(deps.as_ref(), mock_env(), minter_query_msg).unwrap(),
         )
-        .unwrap();
+            .unwrap();
         assert_eq!(
             minter_query_res,
             MinterResponse {

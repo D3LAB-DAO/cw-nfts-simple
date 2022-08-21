@@ -1,8 +1,11 @@
+use std::error::Error;
+use std::fmt::Debug;
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum ContractError {
+pub enum ContractError<E = CustomError>
+    where E: Error + Debug + PartialEq {
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -23,4 +26,13 @@ pub enum ContractError {
 
     #[error("Saving minter failed")]
     MinterSaveError {},
+
+    #[error("CustomError")]
+    CustomErr(E),
+}
+
+#[derive(Error, Debug, PartialEq)]
+pub enum CustomError {
+    #[error("CustomError")]
+    CustomError {}
 }

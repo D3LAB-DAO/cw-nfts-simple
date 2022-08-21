@@ -8,11 +8,19 @@ use cw721_simple::error::ContractError;
 use cw721_simple::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum MetaMessage {
-    Hello {},
+    ValidHello {},
+    InvalidHello {},
+}
+
+#[derive(Error, Debug, PartialEq)]
+pub enum CustomError {
+    #[error("HelloError")]
+    HelloError {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
@@ -51,9 +59,10 @@ pub fn instantiate(
     cw721_instantiate(deps, env, info, msg)
 }
 
-fn handle_custom_msg(msg: MetaMsgExtension) -> Result<Response, ContractError> {
+fn handle_custom_msg(msg: MetaMsgExtension) -> Result<Response, ContractError<CustomError>> {
     match msg {
-        MetaMessage::Hello {} => Ok(Response::new().add_attribute("custom_msg", "hello")),
+        MetaMessage::ValidHello {} => Ok(Response::new().add_attribute("custom_msg", "hello")),
+        MetaMessage::InvalidHello {} => Err(ContractError::CustomErr(CustomError::HelloError {}))
     }
 }
 
@@ -63,7 +72,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg<Extension, MetaMsgExtension>,
-) -> Result<Response, ContractError> {
+) -> Result<Response, ContractError<CustomError>> {
     match msg {
         ExecuteMsg::Extension { msg } => handle_custom_msg(msg),
         _ => cw721_execute(deps, env, info, msg),
@@ -77,7 +86,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 #[cfg(test)]
 pub mod test_contract {
-    use crate::execute;
+    use crate::{CustomError, execute};
     use crate::{instantiate, query, Extension, MetaMsgExtension, Metadata, Trait};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, from_binary, DepsMut, Response};
@@ -98,10 +107,10 @@ pub mod test_contract {
                 minter: ADDR1.to_string(),
             },
         )
-        .unwrap();
+            .unwrap();
     }
 
-    fn mint(deps: DepsMut, owner: &str, token_id: &str) -> Result<Response, ContractError> {
+    fn mint(deps: DepsMut, owner: &str, token_id: &str) -> Result<Response, ContractError<CustomError>> {
         let execute_mint_msg =
             ExecuteMsg::<Extension, MetaMsgExtension>::Mint(MintMsg::<Extension> {
                 token_id: token_id.to_string(),
@@ -177,17 +186,29 @@ pub mod test_contract {
             }
         );
 
-        let custom_execute_msg = ExecuteMsg::Extension {
-            msg: MetaMsgExtension::Hello {},
+        let valid_hello_msg = ExecuteMsg::Extension {
+            msg: MetaMsgExtension::ValidHello {},
         };
-        let custom_execute_res = execute(
+        let valid_hello_res= execute(
             deps.as_mut(),
             mock_env(),
             mock_info(ADDR1, &[]),
-            custom_execute_msg,
-        )
-        .unwrap();
+            valid_hello_msg,
+        ).unwrap();
 
-        assert_eq!(custom_execute_res.attributes, [attr("custom_msg", "hello")]);
+        assert_eq!(valid_hello_res.attributes, [attr("custom_msg", "hello")]);
+
+
+        let invalid_hello_msg = ExecuteMsg::Extension {
+            msg: MetaMsgExtension::InvalidHello {},
+        };
+        let invalid_hello_err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            invalid_hello_msg,
+        ).unwrap_err();
+
+        assert_eq!(invalid_hello_err, ContractError::CustomErr(CustomError::HelloError {}));
     }
 }
