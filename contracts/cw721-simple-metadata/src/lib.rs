@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw721_simple::contract::{
     execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query,
 };
@@ -21,6 +21,16 @@ pub enum CustomExtensionMsg {
 pub enum CustomError {
     #[error("HelloError: {msg}")]
     HelloError { msg: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+pub enum CustomQuery {
+    HelloQuery {},
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+pub struct HelloResponse {
+    msg: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
@@ -65,9 +75,17 @@ fn handle_custom_msg(msg: CustomExtensionMsg) -> Result<Response, ContractError<
         }
         CustomExtensionMsg::InvalidHello {} => {
             Err(ContractError::CustomError(CustomError::HelloError {
-                msg: "no hello".to_string(),
+                msg: "no_hello".to_string(),
             }))
         }
+    }
+}
+
+fn handle_custom_query_msg(msg: CustomQuery) -> StdResult<Binary> {
+    match msg {
+        CustomQuery::HelloQuery {} => to_binary(&HelloResponse {
+            msg: "custom_hello_query_response".to_string(),
+        }),
     }
 }
 
@@ -85,14 +103,18 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    cw721_query::<Extension, Empty>(deps, env, msg)
+pub fn query(deps: Deps, env: Env, msg: QueryMsg<CustomQuery>) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Extension { msg } => handle_custom_query_msg(msg),
+        _ => cw721_query::<Extension, CustomQuery>(deps, env, msg),
+    }
 }
 
 #[cfg(test)]
 pub mod test_contract {
     use crate::{
-        execute, instantiate, query, CustomError, CustomExtensionMsg, Extension, Metadata, Trait,
+        execute, instantiate, query, CustomError, CustomExtensionMsg, CustomQuery, Extension,
+        HelloResponse, Metadata, Trait,
     };
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, from_binary, DepsMut, Response};
@@ -223,8 +245,21 @@ pub mod test_contract {
         assert_eq!(
             invalid_hello_err,
             ContractError::CustomError(CustomError::HelloError {
-                msg: "no hello".to_string()
+                msg: "no_hello".to_string()
             })
+        );
+
+        let hello_query_msg = QueryMsg::<CustomQuery>::Extension {
+            msg: CustomQuery::HelloQuery {},
+        };
+        let hello_query_res: HelloResponse =
+            from_binary(&query(deps.as_ref(), mock_env(), hello_query_msg).unwrap()).unwrap();
+
+        assert_eq!(
+            hello_query_res,
+            HelloResponse {
+                msg: "custom_hello_query_response".to_string()
+            }
         );
     }
 }
