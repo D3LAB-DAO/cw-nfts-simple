@@ -19,8 +19,8 @@ pub enum MetaMessage {
 
 #[derive(Error, Debug, PartialEq)]
 pub enum CustomError {
-    #[error("HelloError")]
-    HelloError {},
+    #[error("HelloError: {msg}")]
+    HelloError { msg: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
@@ -62,7 +62,7 @@ pub fn instantiate(
 fn handle_custom_msg(msg: MetaMsgExtension) -> Result<Response, ContractError<CustomError>> {
     match msg {
         MetaMessage::ValidHello {} => Ok(Response::new().add_attribute("custom_msg", "hello")),
-        MetaMessage::InvalidHello {} => Err(ContractError::CustomError(CustomError::HelloError {})),
+        MetaMessage::InvalidHello {} => Err(ContractError::CustomError(CustomError::HelloError { msg: "no hello".to_string() })),
     }
 }
 
@@ -107,7 +107,7 @@ pub mod test_contract {
                 minter: ADDR1.to_string(),
             },
         )
-        .unwrap();
+            .unwrap();
     }
 
     fn mint(
@@ -199,7 +199,7 @@ pub mod test_contract {
             mock_info(ADDR1, &[]),
             valid_hello_msg,
         )
-        .unwrap();
+            .unwrap();
 
         assert_eq!(valid_hello_res.attributes, [attr("custom_msg", "hello")]);
 
@@ -212,11 +212,11 @@ pub mod test_contract {
             mock_info(ADDR1, &[]),
             invalid_hello_msg,
         )
-        .unwrap_err();
+            .unwrap_err();
 
         assert_eq!(
             invalid_hello_err,
-            ContractError::CustomError(CustomError::HelloError {})
+            ContractError::CustomError(CustomError::HelloError {msg: "no hello".to_string()})
         );
     }
 }
