@@ -1,0 +1,25 @@
+[package]
+name = "cw721-simple-metadata-without-custom-msg"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+
+[dependencies]
+cw721-simple = { path = "../../packages/cw721-simple", features = ["library"] }
+cw721 = "0.13.4"
+cosmwasm-std = { version = "1.0.0" }
+schemars = "0.8.10"
+serde = { version = "1.0.140", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.31" }
+
+[dev-dependencies]
+cosmwasm-schema = { version = "1.0.0" }

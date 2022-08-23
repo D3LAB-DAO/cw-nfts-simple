@@ -33,7 +33,7 @@ where
     CustomError(E),
 }
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum CustomError {
     #[error("CustomError")]
     CustomError {},

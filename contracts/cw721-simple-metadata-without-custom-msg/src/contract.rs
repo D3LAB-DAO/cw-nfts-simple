@@ -1,37 +1,16 @@
+use crate::error::ContractError;
+use crate::execute::{invalid_hello, valid_hello};
+use crate::msg::{ExecuteMsg, QueryMsg};
+use crate::query::handle_custom_query_msg;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw721_simple::contract::{
     execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query,
 };
-use cw721_simple::error::ContractError;
-use cw721_simple::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw721_simple::msg::InstantiateMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum CustomExtensionMsg {
-    ValidHello {},
-    InvalidHello {},
-}
-
-#[derive(Error, Debug, PartialEq, Eq)]
-pub enum CustomError {
-    #[error("HelloError: {msg}")]
-    HelloError { msg: String },
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
-pub enum CustomQuery {
-    HelloQuery {},
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
-pub struct HelloResponse {
-    msg: String,
-}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -58,6 +37,7 @@ pub struct Metadata {
 
 pub type Extension = Option<Metadata>;
 
+#[warn(dead_code)]
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -65,61 +45,55 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    cw721_instantiate(deps, env, info, msg)
-}
-
-fn handle_custom_msg(msg: CustomExtensionMsg) -> Result<Response, ContractError<CustomError>> {
-    match msg {
-        CustomExtensionMsg::ValidHello {} => {
-            Ok(Response::new().add_attribute("custom_msg", "hello"))
-        }
-        CustomExtensionMsg::InvalidHello {} => {
-            Err(ContractError::CustomError(CustomError::HelloError {
-                msg: "no_hello".to_string(),
-            }))
-        }
+    let res = cw721_instantiate(deps, env, info, msg);
+    match res {
+        Ok(res) => Ok(res),
+        Err(err) => Err(ContractError::Cw721ContractError(err)),
     }
 }
 
-fn handle_custom_query_msg(msg: CustomQuery) -> StdResult<Binary> {
-    match msg {
-        CustomQuery::HelloQuery {} => to_binary(&HelloResponse {
-            msg: "custom_hello_query_response".to_string(),
-        }),
-    }
-}
-
+#[warn(dead_code)]
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg<Extension, CustomExtensionMsg>,
-) -> Result<Response, ContractError<CustomError>> {
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Extension { msg } => handle_custom_msg(msg),
-        _ => cw721_execute(deps, env, info, msg),
+        ExecuteMsg::DefaultCw721ExecuteMsg(msg) => {
+            let res = cw721_execute::<Extension, _, _, _>(deps, env, info, *msg);
+            match res {
+                Ok(res) => Ok(res),
+                Err(err) => Err(ContractError::Cw721ContractError(err)),
+            }
+        }
+        ExecuteMsg::ValidHello {} => valid_hello(),
+        ExecuteMsg::InvalidHello {} => invalid_hello(),
     }
 }
 
+#[warn(dead_code)]
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg<CustomQuery>) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Extension { msg } => handle_custom_query_msg(msg),
-        _ => cw721_query::<Extension, CustomQuery>(deps, env, msg),
+        QueryMsg::Cw721QueryMsg(msg) => cw721_query::<Extension, _>(deps, env, msg),
+        QueryMsg::HelloQuery { value } => handle_custom_query_msg(value),
     }
 }
 
 #[cfg(test)]
 pub mod test_contract {
-    use crate::{
-        execute, instantiate, query, CustomError, CustomExtensionMsg, Extension, Metadata, Trait,
-    };
+    use crate::contract::{execute, instantiate, query, Extension, Metadata, Trait};
+    use crate::error::ContractError;
+    use crate::msg::{ExecuteMsg, QueryMsg};
+    use crate::query::HelloResponse;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{from_binary, DepsMut, Response};
+    use cosmwasm_std::{attr, from_binary, DepsMut, Response};
     use cw721::{NftInfoResponse, OwnerOfResponse};
-    use cw721_simple::error::ContractError;
-    use cw721_simple::msg::{ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg};
+    use cw721_simple::msg::{
+        ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg as Cw721QueryMsg,
+    };
 
     const ADDR1: &str = "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm";
 
@@ -137,13 +111,9 @@ pub mod test_contract {
         .unwrap();
     }
 
-    fn mint(
-        deps: DepsMut,
-        owner: &str,
-        token_id: &str,
-    ) -> Result<Response, ContractError<CustomError>> {
+    fn mint(deps: DepsMut, owner: &str, token_id: &str) -> Result<Response, ContractError> {
         let execute_mint_msg =
-            ExecuteMsg::<Extension, CustomExtensionMsg>::Mint(MintMsg::<Extension> {
+            ExecuteMsg::DefaultCw721ExecuteMsg(Box::new(Cw721ExecuteMsg::Mint(MintMsg {
                 token_id: token_id.to_string(),
                 owner: owner.to_string(),
                 token_uri: None,
@@ -162,7 +132,7 @@ pub mod test_contract {
                     animation_url: Some("animation_url".to_string()),
                     youtube_url: Some("youtube_url".to_string()),
                 }),
-            });
+            })));
 
         execute(deps, mock_env(), mock_info(ADDR1, &[]), execute_mint_msg)
     }
@@ -173,10 +143,10 @@ pub mod test_contract {
         init(deps.as_mut());
         mint(deps.as_mut(), ADDR1, "1").unwrap();
 
-        let owner_of_query_msg = QueryMsg::OwnerOf {
+        let owner_of_query_msg = QueryMsg::Cw721QueryMsg(Cw721QueryMsg::OwnerOf {
             token_id: "1".to_string(),
             include_expired: Some(false),
-        };
+        });
 
         let owner_of_res: OwnerOfResponse =
             from_binary(&query(deps.as_ref(), mock_env(), owner_of_query_msg).unwrap()).unwrap();
@@ -188,9 +158,9 @@ pub mod test_contract {
             }
         );
 
-        let nft_info_query_msg = QueryMsg::NftInfo {
+        let nft_info_query_msg = QueryMsg::Cw721QueryMsg(Cw721QueryMsg::NftInfo {
             token_id: "1".to_string(),
-        };
+        });
 
         let nft_info_res: NftInfoResponse<Extension> =
             from_binary(&query(deps.as_ref(), mock_env(), nft_info_query_msg).unwrap()).unwrap();
@@ -214,6 +184,54 @@ pub mod test_contract {
                     animation_url: Some("animation_url".to_string()),
                     youtube_url: Some("youtube_url".to_string()),
                 }),
+            }
+        );
+    }
+
+    #[test]
+    fn test_customs() {
+        let mut deps = mock_dependencies();
+
+        let valid_hello_msg = ExecuteMsg::ValidHello {};
+        let valid_hello_res = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            valid_hello_msg,
+        )
+        .unwrap();
+
+        assert_eq!(
+            valid_hello_res.attributes,
+            [attr("custom_msg", "valid_hello")]
+        );
+
+        let invalid_hello_msg = ExecuteMsg::InvalidHello {};
+        let invalid_hello_err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info(ADDR1, &[]),
+            invalid_hello_msg,
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            invalid_hello_err,
+            ContractError::HelloError {
+                msg: "invalid_hello".to_string()
+            }
+        );
+
+        let hello_query_msg = QueryMsg::HelloQuery {
+            value: "hello_query".to_string(),
+        };
+        let hello_query_res: HelloResponse =
+            from_binary(&query(deps.as_ref(), mock_env(), hello_query_msg).unwrap()).unwrap();
+
+        assert_eq!(
+            hello_query_res,
+            HelloResponse {
+                msg: "hello_query".to_string()
             }
         );
     }

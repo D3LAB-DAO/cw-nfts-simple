@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use cosmwasm_std::{Addr, BlockInfo, Response, StdResult, Storage};
+use cosmwasm_std::{Addr, BlockInfo, Empty, Response, StdResult, Storage};
 use cw721::{ContractInfoResponse, Expiration};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use schemars::JsonSchema;
@@ -19,7 +19,7 @@ pub const TOKENS_COUNT: Item<u64> = Item::new(TOKEN_COUNT_KEY);
 pub const OPERATORS: Map<(&Addr, &Addr), Expiration> = Map::new(OPERATORS_KEY);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct TokenInfo<T> {
+pub struct TokenInfo<T = Empty> {
     /// The owner of the newly minted NFT
     pub owner: Addr,
     /// Approvals are stored here, as we clear them all upon transfer and cannot accumulate much

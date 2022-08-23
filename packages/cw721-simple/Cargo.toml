@@ -16,6 +16,7 @@ cw-storage-plus = "0.14.0"
 cw-utils = "0.14.0"
 cw2 = "0.14.0"
 cw721 = "0.13.4"
+cw721-base = { version = "0.13.4", features = ["library"] }
 thiserror = "1.0.32"
 
 [dev-dependencies]
