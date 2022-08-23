@@ -8,7 +8,7 @@ use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult}
 use cw721_simple::contract::{
     execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query,
 };
-use cw721_simple::msg::InstantiateMsg;
+use cw721_base::msg::InstantiateMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -91,7 +91,7 @@ pub mod test_contract {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, from_binary, DepsMut, Response};
     use cw721::{NftInfoResponse, OwnerOfResponse};
-    use cw721_simple::msg::{
+    use cw721_base::msg::{
         ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg as Cw721QueryMsg,
     };
 

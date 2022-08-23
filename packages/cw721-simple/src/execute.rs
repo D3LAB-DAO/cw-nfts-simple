@@ -1,5 +1,4 @@
 use crate::error::ContractError;
-use crate::msg::MintMsg;
 use crate::state::{
     decrement_tokens, get_minter, get_tokens, increment_tokens, Approval, TokenInfo, OPERATORS,
 };
@@ -9,6 +8,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::error::Error;
 use std::fmt::Debug;
+use cw721_base::MintMsg;
 
 pub fn mint<T, C, E>(
     deps: DepsMut,

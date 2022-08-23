@@ -16,7 +16,8 @@ cw-storage-plus = "0.14.0"
 cw-utils = "0.14.0"
 cw2 = "0.14.0"
 cw721 = "0.13.4"
-cw721-base = { version = "0.13.4", features = ["library"] }
+#cw721-base = { version = "0.13.4", features = ["library"] }
+cw721-base = { git = "https://github.com/CosmWasm/cw-nfts" }
 thiserror = "1.0.32"
 
 [dev-dependencies]

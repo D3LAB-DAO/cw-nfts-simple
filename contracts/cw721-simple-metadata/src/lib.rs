@@ -5,7 +5,7 @@ use cw721_simple::contract::{
     execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query,
 };
 use cw721_simple::error::ContractError;
-use cw721_simple::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw721_base::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -119,7 +119,7 @@ pub mod test_contract {
     use cosmwasm_std::{from_binary, DepsMut, Response};
     use cw721::{NftInfoResponse, OwnerOfResponse};
     use cw721_simple::error::ContractError;
-    use cw721_simple::msg::{ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg};
+    use cw721_base::msg::{ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg};
 
     const ADDR1: &str = "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm";
 

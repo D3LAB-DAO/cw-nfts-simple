@@ -2,11 +2,11 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
+use cw721_base::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cw721_simple::contract::{
     execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query,
 };
 use cw721_simple::error::ContractError;
-use cw721_simple::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 type Extension = Option<Empty>;
 
@@ -25,12 +25,12 @@ pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg,
+    msg: ExecuteMsg<Extension, Empty>,
 ) -> Result<Response, ContractError> {
     cw721_execute(deps, env, info, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg<Empty>) -> StdResult<Binary> {
     cw721_query::<Extension, Empty>(deps, env, msg)
 }

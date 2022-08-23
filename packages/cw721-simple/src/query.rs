@@ -1,4 +1,3 @@
-use crate::msg::MinterResponse;
 use crate::state::{
     get_minter, get_tokens, token_count, Approval, TokenInfo, CONTRACT_INFO, OPERATORS,
 };
@@ -7,6 +6,7 @@ use cw721::{
     AllNftInfoResponse, ApprovalResponse, ApprovalsResponse, Expiration, NftInfoResponse,
     NumTokensResponse, OperatorsResponse, OwnerOfResponse, TokensResponse,
 };
+use cw721_base::MinterResponse;
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
 use serde::de::DeserializeOwned;

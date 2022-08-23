@@ -1,5 +1,4 @@
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{set_contract_info, set_minter};
 use crate::{execute, query};
 #[cfg(not(feature = "library"))]
@@ -7,10 +6,12 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use cw721::{ContractInfoResponse, CustomMsg};
+use cw721_base::msg::{ExecuteMsg};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::error::Error;
 use std::fmt::Debug;
+use cw721_base::{InstantiateMsg, QueryMsg};
 
 const CONTRACT_NAME: &str = "crates.io:cw721-simple-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -143,7 +144,6 @@ where
 pub mod contract_tests {
     use crate::contract::{execute, instantiate, query};
     use crate::error::{ContractError, CustomError};
-    use crate::msg::{ExecuteMsg, InstantiateMsg, MintMsg, MinterResponse, QueryMsg};
     use crate::state::{get_tokens, TokenInfo};
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{attr, from_binary, to_binary, DepsMut, Empty, Response};
@@ -152,6 +152,7 @@ pub mod contract_tests {
         Expiration, NftInfoResponse, NumTokensResponse, OperatorsResponse, OwnerOfResponse,
         TokensResponse,
     };
+    use cw721_base::{ExecuteMsg, InstantiateMsg, MinterResponse, MintMsg, QueryMsg};
 
     const ADDR1: &str = "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm";
     const ADDR2: &str = "osmo18zfp9u7zxg3gel4r3txa2jqxme7jkw7dmh6zw4";
