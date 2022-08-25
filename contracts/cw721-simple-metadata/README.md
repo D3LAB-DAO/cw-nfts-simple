@@ -20,6 +20,7 @@ pub struct Metadata {
 }
 ```
 
+Route your custom message to your self designed function when the message is ExecuteMsg::Extension type and use '_' for the basic messages.
 ```rust
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(

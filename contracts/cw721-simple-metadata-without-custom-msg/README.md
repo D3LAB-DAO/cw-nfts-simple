@@ -13,6 +13,9 @@ pub enum ExecuteMsg {
 }
 ```
 
+Route default type of message to cw721_execute, and handle your custom message by appropriately routing to custom functions. <br>
+If this kind of approach is more desirable, generic type of Custom message extension would be deleted.
+
 ```rust
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
