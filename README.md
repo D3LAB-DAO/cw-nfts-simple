@@ -11,5 +11,5 @@ contracts under contracts directory covers two approaches to extend base contrac
 1. Implement Custom messages whose entry point has generic parameters -> cw721-simple-metadata
 2. Wrap base messages with user-defined message -> cw721-simple-metadata-without-custom-msg
 
-Also, converting into owned type message could be another solution for extension: <br>
+Also, converting into original type(cw721) message could be another solution for extension: <br>
 https://github.com/D3LAB-DAO/cosmonaut-contract/blob/main/contracts/cosmonaut-cw20/src/msg.rs
