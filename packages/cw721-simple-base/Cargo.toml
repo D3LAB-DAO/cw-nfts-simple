@@ -1,5 +1,5 @@
 [package]
-name = "cw721-simple"
+name = "cw721-simple-base"
 version = "0.1.0"
 edition = "2021"
 

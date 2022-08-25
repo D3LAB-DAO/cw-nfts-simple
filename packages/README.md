@@ -34,13 +34,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 ```
 
-type Extension is for generic type of ExecuteMsg::MintMsg which is for metadata extension, CustomExtensionMsg for ExecuteMsg::Extension <br>
+'type Extension' is for generic type of ExecuteMsg::MintMsg which is for metadata extension, CustomExtensionMsg for ExecuteMsg::Extension <br>
 Each types must implement specific traits
+
 * Metadata extension (which is corresponding to Extension) - Serialize, Deserialize, Clone
 * Custom execute msg (which is corresponding to CustomExtensionMsg) - Serialize, Deserialize, Clone
 * Custom query response - Serialize, Deserialize, Clone
 * Custom contract error - Debug, PartialEq, Error
 * Custom submsg - CustomMsg
+
 
 
 

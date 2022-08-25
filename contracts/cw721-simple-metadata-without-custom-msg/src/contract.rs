@@ -5,10 +5,10 @@ use crate::query::handle_custom_query_msg;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw721_simple::contract::{
+use cw721_base::msg::InstantiateMsg;
+use cw721_simple_base::contract::{
     execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query,
 };
-use cw721_base::msg::InstantiateMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -37,7 +37,6 @@ pub struct Metadata {
 
 pub type Extension = Option<Metadata>;
 
-#[warn(dead_code)]
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -52,7 +51,6 @@ pub fn instantiate(
     }
 }
 
-#[warn(dead_code)]
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -73,7 +71,6 @@ pub fn execute(
     }
 }
 
-#[warn(dead_code)]
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {

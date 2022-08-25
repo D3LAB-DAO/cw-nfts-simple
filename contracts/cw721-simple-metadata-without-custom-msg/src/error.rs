@@ -1,4 +1,4 @@
-use cw721_simple::error::ContractError as Cw721ContractError;
+use cw721_simple_base::error::ContractError as Cw721ContractError;
 use std::fmt::Debug;
 use thiserror::Error;
 

@@ -3,10 +3,10 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
 use cw721_base::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use cw721_simple::contract::{
+use cw721_simple_base::contract::{
     execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query,
 };
-use cw721_simple::error::ContractError;
+use cw721_simple_base::error::ContractError;
 
 type Extension = Option<Empty>;
 

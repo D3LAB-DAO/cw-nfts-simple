@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw721_simple::contract::{
+use cw721_base::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw721_simple_base::contract::{
     execute as cw721_execute, instantiate as cw721_instantiate, query as cw721_query,
 };
-use cw721_simple::error::ContractError;
-use cw721_base::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw721_simple_base::error::ContractError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -118,8 +118,8 @@ pub mod test_contract {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{from_binary, DepsMut, Response};
     use cw721::{NftInfoResponse, OwnerOfResponse};
-    use cw721_simple::error::ContractError;
     use cw721_base::msg::{ExecuteMsg, InstantiateMsg, MintMsg, QueryMsg};
+    use cw721_simple_base::error::ContractError;
 
     const ADDR1: &str = "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm";
 

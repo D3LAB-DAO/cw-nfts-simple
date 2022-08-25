@@ -6,12 +6,12 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use cw721::{ContractInfoResponse, CustomMsg};
-use cw721_base::msg::{ExecuteMsg};
+use cw721_base::msg::ExecuteMsg;
+use cw721_base::{InstantiateMsg, QueryMsg};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::error::Error;
 use std::fmt::Debug;
-use cw721_base::{InstantiateMsg, QueryMsg};
 
 const CONTRACT_NAME: &str = "crates.io:cw721-simple-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -152,7 +152,7 @@ pub mod contract_tests {
         Expiration, NftInfoResponse, NumTokensResponse, OperatorsResponse, OwnerOfResponse,
         TokensResponse,
     };
-    use cw721_base::{ExecuteMsg, InstantiateMsg, MinterResponse, MintMsg, QueryMsg};
+    use cw721_base::{ExecuteMsg, InstantiateMsg, MintMsg, MinterResponse, QueryMsg};
 
     const ADDR1: &str = "juno18zfp9u7zxg3gel4r3txa2jqxme7jkw7d972flm";
     const ADDR2: &str = "osmo18zfp9u7zxg3gel4r3txa2jqxme7jkw7dmh6zw4";

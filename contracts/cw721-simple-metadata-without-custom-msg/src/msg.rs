@@ -1,5 +1,5 @@
-use cosmwasm_std::Empty;
 use crate::contract::Extension;
+use cosmwasm_std::Empty;
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, QueryMsg as Cw721QueryMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

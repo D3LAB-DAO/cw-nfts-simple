@@ -4,11 +4,11 @@ use crate::state::{
 };
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response};
 use cw721::{CustomMsg, Cw721ReceiveMsg, Expiration};
+use cw721_base::MintMsg;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::error::Error;
 use std::fmt::Debug;
-use cw721_base::MintMsg;
 
 pub fn mint<T, C, E>(
     deps: DepsMut,
